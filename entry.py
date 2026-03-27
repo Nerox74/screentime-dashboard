@@ -155,7 +155,6 @@ def append_entry(
         return new_row_df
     return pd.concat([existing_df, new_row_df], ignore_index=True)
 
-
 def fmt_minutes(m: int) -> str:
     return f"{m // 60}h {m % 60}min" if m >= 60 else f"{m} min"
 
