@@ -1,2 +1,3 @@
 date,person,total_minutes,app1_name,app1_minutes,app2_name,app2_minutes,app3_name,app3_minutes
-2026-03-27,Ben,90,Amazon,1,Chrome,1,Discord,1
+2026-03-27 00:00:00,Ben,90,Amazon,1,Chrome,1,Discord,1
+2026-03-26,Ben,90,Amazon,1,Chrome,1,Discord,1
