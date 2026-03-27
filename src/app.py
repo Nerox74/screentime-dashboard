@@ -1,111 +1,134 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
+import os
 
 # 1. SETUP & DESIGN
 st.set_page_config(page_title="Screen Time Dashboard", layout="wide")
 
-# Custom CSS für die "Karten"-Optik (optional, für den Profi-Look)
 st.markdown("""
     <style>
-    .metric-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
-    }
+    .main { background-color: #f0f2f6; }
+    div[data-testid="stMetricValue"] { font-size: 32px; color: #1f77b4; }
+    .stPlotlyChart { border-radius: 10px; background-color: white; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. HEADER
-col_title, col_nav = st.columns([3, 1])
-with col_title:
-    st.title("Dashboard app")
-with col_nav:
-    st.write("")  # Abstand
-    st.radio("", ["Tag", "Woche", "Monat"], horizontal=True, label_visibility="collapsed")
+
+# 2. DATEN-FUNKTION
+def load_user_data(user_name):
+    file_mapping = {"Michi": "michell.csv", "Henning": "henning.csv", "Nils": "nils.csv"}
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    file_path = os.path.join(project_root, "data", file_mapping[user_name])
+
+    if os.path.exists(file_path):
+        data = pd.read_csv(file_path, sep=None, engine='python')
+        data.columns = data.columns.str.strip()
+
+        # Falls Spalte 'person' heißt, zu 'User' machen
+        if 'person' in data.columns:
+            data = data.rename(columns={'person': 'User'})
+
+        data['date'] = pd.to_datetime(data['date'])
+
+        # Umwandlung für Apps (Langformat)
+        rows = []
+        for _, r in data.iterrows():
+            for i in range(1, 4):
+                app_n = r.get(f'app{i}_name')
+                app_m = r.get(f'app{i}_minutes')
+                if pd.notna(app_n):
+                    rows.append({
+                        'date': r['date'], 'User': user_name,
+                        'total_minutes': r['total_minutes'],
+                        'App': app_n, 'Minutes': app_m
+                    })
+        return pd.DataFrame(rows), data
+    return pd.DataFrame(), pd.DataFrame()
+
+
+# 3. HEADER
+col_t, col_s, col_u = st.columns([2, 1, 1])
+with col_t:
+    st.title("📱 Dashboard App")
+with col_u:
+    user_options = ["👤 Michi", "👤 Henning", "👤 Nils", "👥 Alle zusammen"]
+    selected_option = st.selectbox("", options=user_options, index=3, label_visibility="collapsed")
 
 st.markdown("---")
 
-# 3. KPI REIHE (Die 4 Karten oben)
-# Hier arbeitet der "Data Engineer" an den Werten
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-with kpi1:
-    st.metric("Heute gesamt", "3h 24min", "+18 min vs gestern")
-with kpi2:
-    st.metric("Durchschnitt pro Tag", "2h 33min", "-12 min vs Vorwoche", delta_color="inverse")
-with kpi3:
-    st.metric("Entsperrungen", "47x", "+6 vs gestern")
-with kpi4:
-    st.metric("Limit-Streak", "5 Tage", "Ziel: 7 Tage", delta_color="off")
-
-st.write("")  # Abstandhalter
-
-# 4. DAS HAUPT-GRID (2 Spalten x 2 Zeilen)
-row1_col1, row1_col2 = st.columns(2)
-row2_col1, row2_col2 = st.columns(2)
-
-# --- ZEILE 1: Täglich & Kategorien ---
-with row1_col1:
-    st.subheader("Tägliche Nutzung — diese Woche")
-    # Beispiel-Daten für den Balken-Chart
-    days = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-    usage = [120, 150, 80, 200, 180, 210, 190]
-    fig_daily = px.bar(x=days, y=usage, color_discrete_sequence=['#4CAF50'])
-    fig_daily.update_layout(height=300, margin=dict(l=0, r=0, t=0, b=0))
-    st.plotly_chart(fig_daily, use_container_width=True)
-
-with row1_col2:
-    st.subheader("Kategorien")
-    # Doughnut Chart (Donut)
-    labels = ['Social', 'Produktiv', 'Unterhaltung', 'Sonstiges']
-    values = [40, 23, 22, 15]
-    fig_donut = px.pie(names=labels, values=values, hole=0.7,
-                       color_discrete_sequence=px.colors.qualitative.Pastel)
-    fig_donut.update_layout(height=300, showlegend=True)
-    st.plotly_chart(fig_donut, use_container_width=True)
-
-# --- ZEILE 2: Top Apps & Limit ---
-with row2_col1:
-    st.subheader("Top Apps heute")
-    # Hier nutzen wir einfache Progress-Bars für den Look aus dem Bild
-    apps = [("Instagram", 72, "1h 12m", "orange"), ("YouTube", 55, "55m", "blue"),
-            ("WhatsApp", 41, "41m", "green"), ("TikTok", 34, "34m", "purple")]
-
-    for app_name, val, time_str, color in apps:
-        col_app, col_bar = st.columns([1, 3])
-        col_app.write(f"**{app_name}**")
-        col_bar.progress(val, text=time_str)
-
-with row2_col2:
-    st.subheader("Limit eingehalten")
-    st.write("Ziel: max. 3h/Tag")
-    # Hier könnte eine Heatmap oder eine einfache Tabelle mit farbigen Boxen hin
-    st.info("💡 Diese Woche: 5/7 Tage das Limit eingehalten!")
-    # Als Platzhalter für die grünen Boxen:
-    st.write("🟩 🟩 ⬜ 🟩 🟩 🟩 🟩")
-
-# Beispiel für die Logik in der app.py
-user_options = ["Henning", "Michi", "Nils", "Alle"]
-selected_user = st.sidebar.selectbox("User auswählen", user_options)
-
-if selected_user == "Alle":
-    st.header("👥 Team-Statistiken")
-
-    # 1. Gesamtzeit aller User summieren
-    total_team_time = df['Dauer_Minuten'].sum()
-    st.metric("Team Gesamtzeit", f"{total_team_time // 60}h {total_team_time % 60}m")
-
-    # 2. Vergleichs-Chart
-    # Wir gruppieren nach User UND Datum
-    team_compare = df.groupby(['User', 'Datum'])['Dauer_Minuten'].sum().reset_index()
-    fig = px.line(team_compare, x='Datum', y='Dauer_Minuten', color='User', title="Wer nutzt wie viel?")
-    st.plotly_chart(fig, use_container_width=True)
-
+# 4. DATEN LADEN & VARIABLEN DEFINIEREN
+if "Alle zusammen" in selected_option:
+    all_l, all_o = [], []
+    for name in ["Michi", "Henning", "Nils"]:
+        l, o = load_user_data(name)
+        if not l.empty:
+            all_l.append(l)
+            all_o.append(o)
+    df_long = pd.concat(all_l, ignore_index=True) if all_l else pd.DataFrame()
+    df_orig = pd.concat(all_o, ignore_index=True) if all_o else pd.DataFrame()
+    is_team = True
 else:
-    # Hier kommt euer bisheriger Code für den einzelnen User hin
-    st.header(f"📱 Statistik für {selected_user}")
-    user_df = df[df['User'] == selected_user]
-    # ... Rest des Dashboards
+    u_name = selected_option.split(" ")[1]
+    df_long, df_orig = load_user_data(u_name)
+    is_team = False
+
+# 5. DASHBOARD ANZEIGEN (nur wenn Daten da sind)
+if not df_orig.empty:
+    # --- DELTA LOGIK ---
+    available_dates = sorted(df_orig['date'].unique(), reverse=True)
+    delta_val = None
+
+    if len(available_dates) >= 2:
+        today = available_dates[0]
+        yesterday = available_dates[1]
+
+        # Summe über alle User an diesen Tagen
+        sum_today = df_orig[df_orig['date'] == today]['total_minutes'].sum()
+        sum_yesterday = df_orig[df_orig['date'] == yesterday]['total_minutes'].sum()
+
+        diff = int(sum_today - sum_yesterday)
+        delta_val = f"{diff} min" if diff < 0 else f"+{diff} min"
+
+    # KPI REIHE
+    k1, k2, k3, k4 = st.columns(4)
+
+    total_m = df_orig.groupby(['date', 'User'])['total_minutes'].first().sum()
+    avg_m = round(df_orig.groupby('date')['total_minutes'].sum().mean(), 0)
+
+    with k1:
+        st.metric("Gesamtzeit", f"{int(total_m // 60)}h {int(total_m % 60)}m", delta=delta_val, delta_color="inverse")
+    with k2:
+        st.metric("Ø pro Tag", f"{int(avg_m)} min")
+    with k3:
+        st.metric("Mitglieder" if is_team else "Status", "3" if is_team else "Aktiv")
+    with k4:
+        top_app = df_long.groupby('App')['Minutes'].sum().idxmax()
+        st.metric("Top App", top_app)
+
+    st.write("")
+
+    # 6. CHARTS
+    r1c1, r1c2 = st.columns(2)
+    with r1c1:
+        st.subheader("Täglicher Verlauf")
+        c_data = df_orig.groupby(['date', 'User'])['total_minutes'].first().reset_index()
+        fig1 = px.line(c_data, x='date', y='total_minutes', color='User' if is_team else None, markers=True)
+        st.plotly_chart(fig1, use_container_width=True)
+    with r1c2:
+        st.subheader("App Verteilung")
+        fig2 = px.pie(df_long, values='Minutes', names='App', hole=0.4)
+        st.plotly_chart(fig2, use_container_width=True)
+
+    r2c1, r2c2 = st.columns(2)
+    with r2c1:
+        st.subheader("Vergleich: Apps")
+        fig3 = px.bar(df_long, x='App', y='Minutes', color='User', barmode='group')
+        st.plotly_chart(fig3, use_container_width=True)
+    with r2c2:
+        st.subheader("Ranking")
+        rank = df_orig.groupby('User')['total_minutes'].sum().sort_values(ascending=False).reset_index()
+        st.dataframe(rank, use_container_width=True, hide_index=True)
+else:
+    st.info("Suche CSV-Dateien im Ordner 'data'...")
