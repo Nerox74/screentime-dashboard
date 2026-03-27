@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from github import Github, GithubException
 
 # ── Konfiguration ────────────────────────────────────────────────
-PERSONS = ["Anna", "Ben", "Clara"]  # ← Namen hier anpassen
+PERSONS = ["Henning", "Michell", "Nils"]  
 
 KNOWN_APPS = sorted([
     "Amazon", "Apple Music", "BeReal", "Chrome", "Clash of Clans",
@@ -14,7 +14,7 @@ KNOWN_APPS = sorted([
     "Google Maps", "HBO Max", "Instagram", "LinkedIn", "Maps",
     "Netflix", "Pinterest", "Reddit", "Safari", "Shazam",
     "Signal", "Snapchat", "Spotify", "Telegram", "TikTok",
-    "Tinder", "Twitch", "Twitter", "WhatsApp", "YouTube",
+    "Tinder", "Twitch", "Twitter", "WhatsApp", "YouTube","Chrome"
 ])
 
 CSV_COLUMNS = [
