@@ -1,71 +1,77 @@
 import streamlit as st
+import pandas as pd
 
 
-def show_kpis(df_orig, df_long, is_team):
-    # 1. DATEN VORBEREITEN
-    available_dates = sorted(df_orig['date'].unique(), reverse=True)
+def show_kpis(df_filtered, df_long, is_team, df_full_context):
+    # 1. VERGLEICHSWERT FINDEN (Delta-Logik)
+    # Wir schauen in den kompletten Daten (df_full_context), was vor dem aktuellen Zeitraum war
+    available_dates = sorted(df_filtered['date'].unique(), reverse=True)
 
-    # Platzhalter für die Deltas
-    delta_time = None
-    delta_avg = None
-    delta_members = None
+    delta_time_pct = None
+    delta_color_time = "inverse"
 
-    if len(available_dates) >= 2:
-        today = available_dates[0]
-        yesterday = available_dates[1]
+    if not df_filtered.empty and not df_full_context.empty:
+        # Aktueller Wert
+        current_sum = df_filtered.groupby(['date', 'User'])['total_minutes'].first().sum()
 
-        # Berechnung Gesamtzeit Delta
-        sum_today = df_orig[df_orig['date'] == today]['total_minutes'].sum()
-        sum_yesterday = df_orig[df_orig['date'] == yesterday]['total_minutes'].sum()
-        diff_time = int(sum_today - sum_yesterday)
-        delta_time = f"{diff_time} min" if diff_time < 0 else f"+{diff_time} min"
+        # Den Tag direkt vor dem ältesten Datum im Filter finden
+        oldest_date_in_filter = available_dates[-1]
+        previous_data = df_full_context[df_full_context['date'] < oldest_date_in_filter]
 
-        # Berechnung Durchschnitt pro Tag Delta (Beispiel: heute vs gestern)
-        # Hier vergleichen wir den heutigen Wert mit dem Gesamtdurchschnitt
-        avg_total = df_orig['total_minutes'].mean()
-        diff_avg = int(sum_today - avg_total)
-        delta_avg = f"{diff_avg} min" if diff_avg < 0 else f"+{diff_avg} min"
+        if not previous_data.empty:
+            last_available_date = previous_data['date'].max()
+            previous_sum = previous_data[previous_data['date'] == last_available_date].groupby(['date', 'User'])[
+                'total_minutes'].first().sum()
 
-    # 2. WERTE BERECHNEN
-    total_m = df_orig.groupby(['date', 'User'])['total_minutes'].first().sum()
-    avg_m = round(df_orig.groupby('date')['total_minutes'].sum().mean(), 0)
+            if previous_sum > 0:
+                diff_pct = ((current_sum - previous_sum) / previous_sum) * 100
+                if diff_pct == 0:
+                    delta_time_pct = "0.0%"
+                    delta_color_time = "off"
+                else:
+                    delta_time_pct = f"{diff_pct:+.1f}%"
+                    delta_color_time = "inverse"
+        else:
+            # Wenn es absolut keinen Vortag gibt
+            delta_time_pct = "0.0%"
+            delta_color_time = "off"
 
-    # 3. ANZEIGE IN SPALTEN
+    # 2. HAUPTWERTE BERECHNEN
+    total_m = df_filtered.groupby(['date', 'User'])['total_minutes'].first().sum()
+    avg_m = round(df_filtered.groupby('date')['total_minutes'].sum().mean(), 0)
+
+    # 3. ANZEIGE
     k1, k2, k3, k4 = st.columns(4)
 
     with k1:
         st.metric(
             label="Gesamtzeit",
             value=f"{int(total_m // 60)}h {int(total_m % 60)}m",
-            delta=delta_time,
-            delta_color="inverse"  # Rot wenn mehr Zeit, Grün wenn weniger
+            delta=delta_time_pct,
+            delta_color=delta_color_time
         )
 
     with k2:
         st.metric(
             label="Ø pro Tag",
             value=f"{int(avg_m)} min",
-            delta=delta_avg,
-            delta_color="inverse"
+            delta=f"Basis: {len(available_dates)} Tag(e)",
+            delta_color="normal"
         )
 
     with k3:
-        # Bei Mitgliedern zeigen wir z.B. an, ob jemand neues dazu kam
-        member_count = 3 if is_team else 1
+        member_count = len(df_filtered['User'].unique())
         st.metric(
             label="Mitglieder" if is_team else "Status",
             value=member_count,
-            delta="Stabil" if is_team else "Aktiv",
+            delta="Aktiv",
             delta_color="normal"
         )
 
     with k4:
-        top_app = df_long.groupby('App')['Minutes'].sum().idxmax()
-        # Bei der Top App gibt es meist kein numerisches Delta,
-        # wir lassen es clean oder schreiben die Minuten dazu
-        top_app_mins = int(df_long[df_long['App'] == top_app]['Minutes'].sum())
-        st.metric(
-            label="Top App",
-            value=top_app,
-            delta=f"{top_app_mins} min gesamt"
-        )
+        if not df_long.empty:
+            top_app = df_long.groupby('App')['Minutes'].sum().idxmax()
+            top_app_time = df_long.groupby('App')['Minutes'].sum().max()
+            st.metric(label="Top App", value=top_app, delta=f"{int(top_app_time)} min")
+        else:
+            st.metric(label="Top App", value="-")

@@ -1,7 +1,9 @@
 import streamlit as st
 import pandas as pd
 
+
 def show_header(available_dates):
+    # CSS für das kompakte Design
     st.markdown("""
         <style>
         .profile-wrapper { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
@@ -16,23 +18,27 @@ def show_header(available_dates):
         st.title("📱 Dashboard")
 
     with col_time:
-        time_filter = st.radio("Modus", ["Tag", "Woche", "Monat"], horizontal=True, label_visibility="collapsed")
+        # Hier wird 'time_filter' definiert!
+        time_filter = st.radio(
+            "Zeitraum",
+            ["Tag", "Woche", "Monat"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
 
     with col_date:
-        # Hier wählen wir das spezifische Datum aus
         if not available_dates.empty:
-            min_d = available_dates.min().to_pydatetime()
-            max_d = available_dates.max().to_pydatetime()
-
+            min_d = available_dates.min()
+            max_d = available_dates.max()
             selected_date = st.date_input(
-                "Datum wählen",
+                "Datum",
                 value=max_d,
                 min_value=min_d,
                 max_value=max_d,
                 label_visibility="collapsed"
             )
         else:
-            selected_date = None
+            selected_date = pd.Timestamp.now()
 
     with col_u:
         st.markdown('<div class="profile-wrapper">', unsafe_allow_html=True)
@@ -40,8 +46,14 @@ def show_header(available_dates):
         with c1:
             st.markdown('<div class="round-avatar">👤</div>', unsafe_allow_html=True)
         with c2:
-            user_options = ["Michi", "Henning", "Nils", "Alle"]
-            selected_user = st.selectbox("", options=user_options, index=3, label_visibility="collapsed")
+            user_options = ["Michell", "Henning", "Nils", "Alle"]
+            selected_user = st.selectbox(
+                "",
+                options=user_options,
+                index=0,  # Standardmäßig Michell
+                label_visibility="collapsed"
+            )
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # Jetzt sind alle drei Variablen (time_filter, selected_user, selected_date) bekannt
     return time_filter, selected_user, pd.to_datetime(selected_date)

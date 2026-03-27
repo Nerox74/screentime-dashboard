@@ -2,9 +2,9 @@ import pandas as pd
 import os
 import streamlit as st
 
-
 def load_user_data(user_name):
-    file_mapping = {"Michi": "michell.csv", "Henning": "henning.csv", "Nils": "nils.csv"}
+    # Änderung: Schlüssel auf "Michell" gesetzt
+    file_mapping = {"Michell": "michell.csv", "Henning": "henning.csv", "Nils": "nils.csv"}
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
     file_path = os.path.join(project_root, "data", file_mapping[user_name])
