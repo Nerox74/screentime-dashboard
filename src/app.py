@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+from datetime import timedelta
 
 # 1. SETUP & DESIGN
 st.set_page_config(page_title="Screen Time Dashboard", layout="wide")
@@ -25,14 +26,10 @@ def load_user_data(user_name):
     if os.path.exists(file_path):
         data = pd.read_csv(file_path, sep=None, engine='python')
         data.columns = data.columns.str.strip()
-
-        # Falls Spalte 'person' heißt, zu 'User' machen
         if 'person' in data.columns:
             data = data.rename(columns={'person': 'User'})
-
         data['date'] = pd.to_datetime(data['date'])
 
-        # Umwandlung für Apps (Langformat)
         rows = []
         for _, r in data.iterrows():
             for i in range(1, 4):
@@ -48,23 +45,28 @@ def load_user_data(user_name):
     return pd.DataFrame(), pd.DataFrame()
 
 
-# 3. HEADER
-col_t, col_s, col_u = st.columns([2, 1, 1])
+# 3. HEADER MIT USER- UND ZEITFILTER
+col_t, col_time, col_u = st.columns([2, 1.5, 1])
 with col_t:
     st.title("📱 Dashboard App")
+
+with col_time:
+    # Zeitfilter Buttons
+    time_filter = st.radio("Zeitraum", ["Tag", "Woche", "Monat"], horizontal=True, label_visibility="collapsed")
+
 with col_u:
     user_options = ["👤 Michi", "👤 Henning", "👤 Nils", "👥 Alle zusammen"]
     selected_option = st.selectbox("", options=user_options, index=3, label_visibility="collapsed")
 
 st.markdown("---")
 
-# 4. DATEN LADEN & VARIABLEN DEFINIEREN
+# 4. DATEN LADEN
 if "Alle zusammen" in selected_option:
     all_l, all_o = [], []
     for name in ["Michi", "Henning", "Nils"]:
         l, o = load_user_data(name)
         if not l.empty:
-            all_l.append(l)
+            all_l.append(l);
             all_o.append(o)
     df_long = pd.concat(all_l, ignore_index=True) if all_l else pd.DataFrame()
     df_orig = pd.concat(all_o, ignore_index=True) if all_o else pd.DataFrame()
@@ -74,26 +76,36 @@ else:
     df_long, df_orig = load_user_data(u_name)
     is_team = False
 
-# 5. DASHBOARD ANZEIGEN (nur wenn Daten da sind)
+# --- ZEIT-FILTER LOGIK ---
 if not df_orig.empty:
-    # --- DELTA LOGIK ---
+    latest_date = df_orig['date'].max()
+
+    if time_filter == "Tag":
+        filter_date = latest_date
+        df_orig = df_orig[df_orig['date'] == filter_date]
+        df_long = df_long[df_long['date'] == filter_date]
+    elif time_filter == "Woche":
+        filter_date = latest_date - timedelta(days=7)
+        df_orig = df_orig[df_orig['date'] > filter_date]
+        df_long = df_long[df_long['date'] > filter_date]
+    elif time_filter == "Monat":
+        filter_date = latest_date - timedelta(days=30)
+        df_orig = df_orig[df_orig['date'] > filter_date]
+        df_long = df_long[df_long['date'] > filter_date]
+
+# 5. DASHBOARD ANZEIGEN
+if not df_orig.empty:
+    # DELTA LOGIK (immer auf den letzten verfügbaren Tag bezogen)
     available_dates = sorted(df_orig['date'].unique(), reverse=True)
     delta_val = None
-
     if len(available_dates) >= 2:
-        today = available_dates[0]
-        yesterday = available_dates[1]
-
-        # Summe über alle User an diesen Tagen
-        sum_today = df_orig[df_orig['date'] == today]['total_minutes'].sum()
-        sum_yesterday = df_orig[df_orig['date'] == yesterday]['total_minutes'].sum()
-
-        diff = int(sum_today - sum_yesterday)
+        today_sum = df_orig[df_orig['date'] == available_dates[0]]['total_minutes'].sum()
+        yesterday_sum = df_orig[df_orig['date'] == available_dates[1]]['total_minutes'].sum()
+        diff = int(today_sum - yesterday_sum)
         delta_val = f"{diff} min" if diff < 0 else f"+{diff} min"
 
     # KPI REIHE
     k1, k2, k3, k4 = st.columns(4)
-
     total_m = df_orig.groupby(['date', 'User'])['total_minutes'].first().sum()
     avg_m = round(df_orig.groupby('date')['total_minutes'].sum().mean(), 0)
 
@@ -105,14 +117,13 @@ if not df_orig.empty:
         st.metric("Mitglieder" if is_team else "Status", "3" if is_team else "Aktiv")
     with k4:
         top_app = df_long.groupby('App')['Minutes'].sum().idxmax()
-        st.metric("Top App", top_app)
+        k4.metric("Top App", top_app)
 
     st.write("")
-
     # 6. CHARTS
     r1c1, r1c2 = st.columns(2)
     with r1c1:
-        st.subheader("Täglicher Verlauf")
+        st.subheader("Verlauf")
         c_data = df_orig.groupby(['date', 'User'])['total_minutes'].first().reset_index()
         fig1 = px.line(c_data, x='date', y='total_minutes', color='User' if is_team else None, markers=True)
         st.plotly_chart(fig1, use_container_width=True)
@@ -131,4 +142,4 @@ if not df_orig.empty:
         rank = df_orig.groupby('User')['total_minutes'].sum().sort_values(ascending=False).reset_index()
         st.dataframe(rank, use_container_width=True, hide_index=True)
 else:
-    st.info("Suche CSV-Dateien im Ordner 'data'...")
+    st.info("Keine Daten für diesen Zeitraum vorhanden.")
