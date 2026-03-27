@@ -2,55 +2,70 @@ import streamlit as st
 
 
 def show_header():
-    # CSS für das runde Icon und das kompakte Dropdown
+    # CSS für das kompakte Design
     st.markdown("""
         <style>
-        .profile-container {
+        /* Container für Icon + Dropdown */
+        .profile-wrapper {
             display: flex;
             align-items: center;
-            gap: 10px; /* Abstand zwischen Icon und Dropdown */
+            justify-content: flex-end; /* Rechtsbündig */
+            gap: 5px;
         }
-        .profile-icon {
-            width: 40px;
-            height: 40px;
-            background-color: #e0e0e0;
-            border-radius: 50%; /* Macht es kreisrund */
+
+        /* Das runde Icon */
+        .round-avatar {
+            width: 35px;
+            height: 35px;
+            background-color: #f0f2f6;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            border: 1px solid #ccc;
+            font-size: 18px;
+            border: 1px solid #ddd;
         }
-        /* Verkleinert den Abstand über dem Dropdown in Streamlit */
+
+        /* Macht das Streamlit-Dropdown extrem schmal */
+        div[data-testid="stSelectbox"] {
+            width: 130px !important; /* Hier stellst du die Breite ein */
+        }
+
+        /* Entfernt unnötige Abstände um das Dropdown */
         div[data-testid="stSelectbox"] > div {
-            margin-top: -5px;
+            border: none;
+            background-color: transparent;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    col_t, col_time, col_u = st.columns([2, 1.5, 1.2])
+    col_t, col_time, col_u = st.columns([2, 1.5, 1])
 
     with col_t:
-        st.title("📱 Dashboard App")
+        st.title("📱 Dashboard")
 
     with col_time:
         time_filter = st.radio("Zeitraum", ["Tag", "Woche", "Monat"], horizontal=True, label_visibility="collapsed")
 
     with col_u:
-        # Wir nutzen wieder Spalten, aber mit sehr engem Abstand
-        icon_col, select_col = st.columns([0.3, 2])
+        # Alles in ein Div packen für Flexbox-Layout
+        st.markdown('<div class="profile-wrapper">', unsafe_allow_html=True)
 
-        with icon_col:
-            # Das runde Icon
-            st.markdown('<div class="profile-icon">👤</div>', unsafe_allow_html=True)
+        # Wir nutzen Unter-Spalten, um Icon und Dropdown nebeneinander zu zwingen
+        c1, c2 = st.columns([0.4, 1.6])
 
-        with select_col:
-            user_options = ["Michi", "Henning", "Nils", "Alle zusammen"]
+        with c1:
+            st.markdown('<div class="round-avatar">👤</div>', unsafe_allow_html=True)
+
+        with c2:
+            user_options = ["Michi", "Henning", "Nils", "Alle"]
             selected_user = st.selectbox(
                 "",
                 options=user_options,
                 index=3,
                 label_visibility="collapsed"
             )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 
     return time_filter, selected_user

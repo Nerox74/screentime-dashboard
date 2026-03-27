@@ -13,18 +13,20 @@ st.set_page_config(page_title="Screen Time Dashboard", layout="wide")
 time_filter, selected_option = show_header()
 st.markdown("---")
 
+
 # 2. Daten laden
-if "Alle zusammen" in selected_option:
+if "Alle" in selected_option:  # "Alle" statt "Alle zusammen" (da wir es kompakter gemacht haben)
     all_l, all_o = [], []
     for name in ["Michi", "Henning", "Nils"]:
         l, o = load_user_data(name)
         if not l.empty:
             all_l.append(l); all_o.append(o)
-    df_long = pd.concat(all_l, ignore_index=True)
-    df_orig = pd.concat(all_o, ignore_index=True)
+    df_long = pd.concat(all_l, ignore_index=True) if all_l else pd.DataFrame()
+    df_orig = pd.concat(all_o, ignore_index=True) if all_o else pd.DataFrame()
     is_team = True
 else:
-    u_name = selected_option.split(" ")[1]
+    # FIX: Wir nehmen einfach den ganzen Namen, da kein Emoji mehr davor steht!
+    u_name = selected_option
     df_long, df_orig = load_user_data(u_name)
     is_team = False
 
