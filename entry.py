@@ -45,12 +45,15 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         return df
     except GithubException:
         return pd.DataFrame(columns=CSV_COLUMNS)
-
-
+        
 def save_csv_to_github(person: str, df: pd.DataFrame) -> None:
-    """DataFrame als CSV in GitHub speichern (erstellen oder überschreiben)."""
     repo = get_repo()
     path = f"data/{person.lower()}.csv"
+
+    # Datum immer als reinen String speichern, nie als Timestamp
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
+
     csv_content = df.to_csv(index=False)
 
     try:
