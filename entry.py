@@ -35,13 +35,13 @@ def get_repo():
 
 
 def load_csv_from_github(person: str) -> pd.DataFrame:
-    """CSV einer Person aus GitHub laden. Gibt leeren DataFrame zurück wenn nicht vorhanden."""
     repo = get_repo()
     path = f"data/{person.lower()}.csv"
     try:
         file = repo.get_contents(path)
         content = base64.b64decode(file.content).decode("utf-8")
-        df = pd.read_csv(io.StringIO(content), parse_dates=["date"])
+        df = pd.read_csv(io.StringIO(content))
+        df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
         return df
     except GithubException:
         return pd.DataFrame(columns=CSV_COLUMNS)
