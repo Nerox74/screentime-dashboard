@@ -41,7 +41,7 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         file = repo.get_contents(path)
         content = base64.b64decode(file.content).decode("utf-8")
         df = pd.read_csv(io.StringIO(content))
-        df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+        df["date"] = pd.to_datetime(df["date"]).dt.normalize()
         return df
     except GithubException:
         return pd.DataFrame(columns=CSV_COLUMNS)
@@ -139,9 +139,8 @@ def append_entry(
     total_minutes: int,
     apps: list,
 ) -> pd.DataFrame:
-    """Neue Zeile zum bestehenden DataFrame hinzufügen und zurückgeben."""
     new_row = {
-        "date": entry_date.isoformat(),
+        "date": entry_date.strftime("%Y-%m-%d"),  # ← immer reines Datum, nie Timestamp
         "person": person,
         "total_minutes": total_minutes,
         "app1_name": apps[0][0],
