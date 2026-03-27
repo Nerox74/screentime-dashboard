@@ -2,42 +2,47 @@ import streamlit as st
 import pandas as pd
 from datetime import timedelta
 
-# --- HIER FEHLTEN DIE IMPORTE ---
+# Importe der eigenen Module
 from data_loader import load_user_data
 from components.header import show_header
 from components.kpis import show_kpis
 from components.charts import show_main_charts
 
-st.set_page_config(layout="wide", page_title="Screentime Dashboard", page_icon="📱")
+st.set_page_config(layout="wide", page_title="Screentime Dashboard")
 
-# --- SCHRITT 1: DATEN VORAB LADEN (Zeitraum ermitteln) ---
-# Wir laden Michell, um die verfügbaren Tage für den Kalender zu bekommen
+# --- SCHRITT 1: DATEN FÜR DEN KALENDER VORAB LADEN ---
+# Wir nutzen Michell als Referenz, um verfügbare Tage im Kalender anzuzeigen
 _, df_temp = load_user_data("Michell")
 available_dates = df_temp['date'] if not df_temp.empty else pd.Series()
 
 # --- SCHRITT 2: HEADER AUFRUFEN ---
-# Gibt Filter-Modus, gewählten User und gewähltes Datum zurück
+# Erst hier werden die Variablen 'time_filter', 'selected_option' und 'picked_date' definiert
 time_filter, selected_option, picked_date = show_header(available_dates)
 st.markdown("---")
 
-# --- SCHRITT 3: DATEN LADEN ---
+# --- SCHRITT 3: DATEN BASIEREND AUF DER AUSWAHL LADEN ---
+# Jetzt ist 'selected_option' bekannt und wir können sie prüfen
 if selected_option == "Alle":
     all_l, all_o = [], []
+    # Wichtig: Die Namen müssen exakt wie im file_mapping in data_loader.py sein
     for name in ["Michell", "Henning", "Nils"]:
         l, o = load_user_data(name)
         if not l.empty:
             all_l.append(l)
             all_o.append(o)
-    df_long = pd.concat(all_l, ignore_index=True) if all_l else pd.DataFrame()
-    df_orig = pd.concat(all_o, ignore_index=True) if all_o else pd.DataFrame()
+
+    if all_l:
+        df_long = pd.concat(all_l, ignore_index=True)
+        df_orig = pd.concat(all_o, ignore_index=True)
+    else:
+        df_long, df_orig = pd.DataFrame(), pd.DataFrame()
     is_team = True
 else:
-    u_name = selected_option
-    df_long, df_orig = load_user_data(u_name)
+    # Einzelansicht laden
+    df_long, df_orig = load_user_data(selected_option)
     is_team = False
 
-# Kontext für die KPI-Berechnung (bevor wir filtern)
-# Wir brauchen eine Kopie der ungefilterten Daten für den Vergleich zum Vortag
+# Kopie für den KPI-Vergleich (Vortag), bevor wir den Zeitfilter anwenden
 df_full_context = df_orig.copy() if not df_orig.empty else pd.DataFrame()
 
 # --- SCHRITT 4: ZEITFILTER ANWENDEN ---
@@ -57,9 +62,9 @@ if not df_orig.empty and picked_date:
 
 # --- SCHRITT 5: ANZEIGE ---
 if not df_orig.empty:
-    # Wir übergeben die gefilterten Daten UND den Kontext für das Delta
+    # Übergabe der Daten und des Kontexts für die Deltas
     show_kpis(df_orig, df_long, is_team, df_full_context)
     st.write("")
     show_main_charts(df_orig, df_long, is_team)
 else:
-    st.info(f"Keine Daten für {selected_option} am gewählten Datum gefunden.")
+    st.info(f"Keine Daten für {selected_option} im gewählten Zeitraum gefunden.")
