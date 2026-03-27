@@ -14,7 +14,7 @@ KNOWN_APPS = sorted([
     "Google Maps", "HBO Max", "Instagram", "LinkedIn", "Maps",
     "Netflix", "Pinterest", "Reddit", "Safari", "Shazam",
     "Signal", "Snapchat", "Spotify", "Telegram", "TikTok",
-    "Tinder", "Twitch", "Twitter", "WhatsApp", "YouTube","Chrome"
+    "Tinder", "Twitch", "Twitter", "WhatsApp", "YouTube"
 ])
 
 CSV_COLUMNS = [
