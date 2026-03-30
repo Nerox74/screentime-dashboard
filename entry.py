@@ -44,6 +44,21 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         content = base64.b64decode(file.content).decode("utf-8")
         df = pd.read_csv(io.StringIO(content))
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
+
+        # Alte Spaltennamen (Tippfehler ohne "s") korrigieren
+        df = df.rename(columns={
+            "app4_minute": "app4_minutes",
+            "app5_minute": "app5_minutes",
+        })
+
+        # Fehlende App4/App5-Spalten ergänzen (für alte Einträge mit nur 3 Apps)
+        for col, default in [
+            ("app4_name", ""), ("app4_minutes", 0),
+            ("app5_name", ""), ("app5_minutes", 0),
+        ]:
+            if col not in df.columns:
+                df[col] = default
+
         return df
     except GithubException:
         return pd.DataFrame(columns=CSV_COLUMNS)
