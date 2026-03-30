@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from github import Github, GithubException
 
 # ── Konfiguration ────────────────────────────────────────────────
-PERSONS = ["Henning", "Michell", "Nils"]  
+PERSONS = ["Henning", "Michell", "Nils"]
 
 KNOWN_APPS = sorted([
     "Amazon", "Apple Music", "BeReal", "Chrome", "Clash of Clans",
@@ -47,12 +47,12 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         return df
     except GithubException:
         return pd.DataFrame(columns=CSV_COLUMNS)
-        
+
+
 def save_csv_to_github(person: str, df: pd.DataFrame) -> None:
     repo = get_repo()
     path = f"data/{person.lower()}.csv"
 
-    # Datum immer als reinen String speichern, nie als Timestamp
     df = df.copy()
     df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
 
@@ -119,15 +119,15 @@ def validate_entry(
     app_sum = sum(m for _, m in apps)
     if total_minutes > 0 and app_sum > total_minutes:
         errors.append(
-            f"Summe der Top-3-Apps ({app_sum} min) übersteigt "
+            f"Summe der Top-5-Apps ({app_sum} min) übersteigt "
             f"die Gesamtzeit ({total_minutes} min)."
         )
 
     mins = [m for _, m in apps]
-    if mins[0] < mins[1] or mins[1] < mins[2]:
+    if any(mins[i] < mins[i + 1] for i in range(len(mins) - 1)):
         errors.append(
             "Apps müssen nach Minuten absteigend sortiert sein "
-            "(App 1 = meiste Minuten, App 3 = wenigste)."
+            "(App 1 = meiste Minuten, App 5 = wenigste)."
         )
 
     names = [n.lower() for n, _ in apps if n]
@@ -145,7 +145,7 @@ def append_entry(
     apps: list,
 ) -> pd.DataFrame:
     new_row = {
-        "date": entry_date.strftime("%Y-%m-%d"),  # ← immer reines Datum, nie Timestamp
+        "date": entry_date.strftime("%Y-%m-%d"),
         "person": person,
         "total_minutes": total_minutes,
         "app1_name": apps[0][0],
@@ -155,14 +155,15 @@ def append_entry(
         "app3_name": apps[2][0],
         "app3_minutes": apps[2][1],
         "app4_name": apps[3][0],
-        "app4_minute": apps[3][1]
-        "app5_name": apps[4][0]
-        "app5_minute": apps[4][1]
+        "app4_minutes": apps[3][1],
+        "app5_name": apps[4][0],
+        "app5_minutes": apps[4][1],
     }
     new_row_df = pd.DataFrame([new_row])
     if existing_df.empty:
         return new_row_df
     return pd.concat([existing_df, new_row_df], ignore_index=True)
+
 
 def fmt_minutes(m: int) -> str:
     return f"{m // 60}h {m % 60}min" if m >= 60 else f"{m} min"
@@ -238,14 +239,14 @@ if total_minutes > 0:
 
 st.divider()
 
-# ── 4. Top-3-Apps ─────────────────────────────────────────────────
-st.subheader("4 · Top 3 Apps")
+# ── 4. Top-5-Apps ─────────────────────────────────────────────────
+st.subheader("4 · Top 5 Apps")
 st.caption(
-    "Trage die drei meistgenutzten Apps ein — App 1 hat die meisten Minuten, App 3 die wenigsten."
+    "Trage die fünf meistgenutzten Apps ein — App 1 hat die meisten Minuten, App 5 die wenigsten."
 )
 
 apps = []
-for i in range(1, 4):
+for i in range(1, 6):
     st.markdown(f"**App {i}**")
     col_name, col_min_h, col_min_m = st.columns([3, 1, 1])
 
@@ -288,7 +289,7 @@ if total_minutes > 0:
     unaccounted = total_minutes - app_sum
     st.progress(
         pct,
-        text=f"Top-3 erfasst: {app_sum} min | Sonstige: {max(0, unaccounted)} min",
+        text=f"Top-5 erfasst: {app_sum} min | Sonstige: {max(0, unaccounted)} min",
     )
 
 st.divider()
@@ -314,8 +315,7 @@ if st.button("Eintrag speichern", type="primary", use_container_width=True):
             f"{apps[1][0]} ({apps[1][1]} min), "
             f"{apps[2][0]} ({apps[2][1]} min), "
             f"{apps[3][0]} ({apps[3][1]} min), "
-            f"{apps[4][0]} ({apps[4][1]} min)" 
-            
+            f"{apps[4][0]} ({apps[4][1]} min)"
         )
         st.balloons()
         st.rerun()
