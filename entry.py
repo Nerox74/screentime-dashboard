@@ -22,6 +22,8 @@ CSV_COLUMNS = [
     "app1_name", "app1_minutes",
     "app2_name", "app2_minutes",
     "app3_name", "app3_minutes",
+    "app4_name", "app4_minutes",
+    "app5_name", "app5_minutes"
 ]
 
 
@@ -152,6 +154,10 @@ def append_entry(
         "app2_minutes": apps[1][1],
         "app3_name": apps[2][0],
         "app3_minutes": apps[2][1],
+        "app4_name": apps[3][0],
+        "app4_minute": apps[3][1]
+        "app5_name": apps[4][0]
+        "app5_minute": apps[4][1]
     }
     new_row_df = pd.DataFrame([new_row])
     if existing_df.empty:
@@ -306,7 +312,10 @@ if st.button("Eintrag speichern", type="primary", use_container_width=True):
             f"{fmt_minutes(total_minutes)} · "
             f"{apps[0][0]} ({apps[0][1]} min), "
             f"{apps[1][0]} ({apps[1][1]} min), "
-            f"{apps[2][0]} ({apps[2][1]} min)"
+            f"{apps[2][0]} ({apps[2][1]} min), "
+            f"{apps[3][0]} ({apps[3][1]} min), "
+            f"{apps[4][0]} ({apps[4][1]} min)" 
+            
         )
         st.balloons()
         st.rerun()
@@ -328,12 +337,16 @@ with st.expander(f"Einträge von {person} ansehen & korrigieren"):
             "app1_name", "app1_minutes",
             "app2_name", "app2_minutes",
             "app3_name", "app3_minutes",
+            "app4_name", "app4_minutes",
+            "app5_name", "app5_minutes"
         ]]
         display.columns = [
             "Datum", "Gesamt",
             "App 1", "Min 1",
             "App 2", "Min 2",
             "App 3", "Min 3",
+            "App 4", "Min 4",
+            "App 5", "Min 5"
         ]
         st.dataframe(display, use_container_width=True, hide_index=True)
 
