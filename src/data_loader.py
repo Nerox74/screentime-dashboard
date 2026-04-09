@@ -18,7 +18,7 @@ def load_user_data(user_name):
 
         rows = []
         for _, r in data.iterrows():
-            for i in range(1, 4):
+            for i in range(1, 6):
                 app_n = r.get(f'app{i}_name')
                 app_m = r.get(f'app{i}_minutes')
                 if pd.notna(app_n):

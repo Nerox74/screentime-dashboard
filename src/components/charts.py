@@ -133,7 +133,7 @@ def style_plotly_layout(fig):
         yaxis_title=""
     )
 
-
+#test
 def show_team_view(df_orig):
     """Ansicht wenn 'Alle' ausgewählt ist"""
     st.markdown('<div class="chart-card">', unsafe_allow_html=True)
