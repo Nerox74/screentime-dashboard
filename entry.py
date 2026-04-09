@@ -217,8 +217,7 @@ entry_date = st.date_input(
     "Datum",
     value=date.today(),
     max_value=date.today(),
-    min_value=date.today() - timedelta(days=7),
-    help="Du kannst bis zu 7 Tage rückwirkend eintragen.",
+    help="Du kannst jeden beliebigen Tag in der Vergangenheit eintragen.",
     label_visibility="collapsed",
 )
 
