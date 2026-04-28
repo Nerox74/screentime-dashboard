@@ -12,6 +12,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 from github import Github, GithubException
+from logging_setup import setup_logging
 
 from logging_setup import setup_logging
 
