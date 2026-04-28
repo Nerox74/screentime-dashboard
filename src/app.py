@@ -1,19 +1,25 @@
-import streamlit as st
-import pandas as pd
+import logging
 from datetime import timedelta
+
+import pandas as pd
+import streamlit as st
+from components.charts import show_main_charts
+from components.header import show_header
+from components.kpis import show_kpis
 
 # Importe der eigenen Module
 from data_loader import load_user_data
-from components.header import show_header
-from components.kpis import show_kpis
-from components.charts import show_main_charts
 
 st.set_page_config(layout="wide", page_title="Screentime Dashboard")
+
+# Durch aufruf in Entry.py weiß Python schon, wie geloggt werden soll
+logger = logging.getLogger(__name__)
+
 
 # --- SCHRITT 1: DATEN FÜR DEN KALENDER VORAB LADEN ---
 # Wir nutzen Michell als Referenz, um verfügbare Tage im Kalender anzuzeigen
 _, df_temp = load_user_data("Michell")
-available_dates = df_temp['date'] if not df_temp.empty else pd.Series()
+available_dates = df_temp["date"] if not df_temp.empty else pd.Series()
 
 # --- SCHRITT 2: HEADER AUFRUFEN ---
 # Erst hier werden die Variablen 'time_filter', 'selected_option' und 'picked_date' definiert
@@ -49,16 +55,24 @@ df_full_context = df_orig.copy() if not df_orig.empty else pd.DataFrame()
 if not df_orig.empty and picked_date:
     picked_date = pd.to_datetime(picked_date)
     if time_filter == "Tag":
-        df_orig = df_orig[df_orig['date'] == picked_date]
-        df_long = df_long[df_long['date'] == picked_date]
+        df_orig = df_orig[df_orig["date"] == picked_date]
+        df_long = df_long[df_long["date"] == picked_date]
     elif time_filter == "Woche":
         start_date = picked_date - timedelta(days=7)
-        df_orig = df_orig[(df_orig['date'] > start_date) & (df_orig['date'] <= picked_date)]
-        df_long = df_long[(df_long['date'] > start_date) & (df_long['date'] <= picked_date)]
+        df_orig = df_orig[
+            (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
+        ]
+        df_long = df_long[
+            (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
+        ]
     elif time_filter == "Monat":
         start_date = picked_date - timedelta(days=30)
-        df_orig = df_orig[(df_orig['date'] > start_date) & (df_orig['date'] <= picked_date)]
-        df_long = df_long[(df_long['date'] > start_date) & (df_long['date'] <= picked_date)]
+        df_orig = df_orig[
+            (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
+        ]
+        df_long = df_long[
+            (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
+        ]
 
 # --- SCHRITT 5: ANZEIGE ---
 if not df_orig.empty:
