@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Richtwert gesunde Bildschirmzeit pro Tag in Minuten (anpassbar)
-HEALTHY_LIMIT_MINUTES = 120
+HEALTHY_LIMIT_MINUTES = 180
 
 
 def _fmt(minutes: float) -> str:
@@ -58,17 +58,8 @@ def _calc_health_index(
 ) -> tuple[int, str, str]:
     """
     Gesundheitsindex 0–100.
-      0   = sehr gut  (weit unter Richtwert, auch historisch niedrig)
-      100 = sehr schlecht (massiv über Richtwert, auch historisch hoch)
-
-    Berechnung:
-      score_today = min(today / limit, 3.0) / 3.0          → Gewicht 60 %
-      score_7d    = min(avg_7d / limit, 3.0) / 3.0         → Gewicht 40 %
-      index       = round((score_today * 0.6 + score_7d * 0.4) * 100)
-
-    Der 7-Tage-Schnitt dämpft den Index:
-      Wer 6 Tage zu viel hatte, bleibt auch bei einem guten Tag hoch.
-      Wer 6 Tage wenig hatte, profitiert davon trotz einem schlechten Tag.
+      100 = sehr gut  (weit unter Richtwert)
+      0   = sehr schlecht (massiv über Richtwert)
     """
     ratio_today = today_minutes / limit if limit > 0 else 0
     score_today = min(ratio_today, 3.0) / 3.0
@@ -89,22 +80,25 @@ def _calc_health_index(
         except Exception:
             pass
 
-    index = round((score_today * 0.6 + score_7d * 0.4) * 100)
+    # Umkehrung: 100 - Belastung
+    # Wenn score_today & score_7d = 0 sind (keine Nutzung), ergibt das 100 (Perfekt)
+    index = round(100 - ((score_today * 0.6 + score_7d * 0.4) * 100))
 
-    if index <= 33:
+    # Schwellenwerte umgekehrt:
+    if index >= 67:
         label, css = "Gut", "delta-green"
-    elif index <= 66:
+    elif index >= 34:
         label, css = "Mäßig", "delta-orange"
     else:
-        label, css = "Hoch", "delta-red"
+        label, css = "Schlecht", "delta-red" # Label angepasst von "Hoch" zu "Schlecht"
 
     return index, label, css
-
 
 def _health_index_html(index: int, label: str, css: str, today_minutes: float, limit: int = HEALTHY_LIMIT_MINUTES) -> str:
     if today_minutes <= 0:
         return '<div class="delta-neutral">— keine Daten</div>'
 
+    # Die Farben bleiben an das 'css' Label gebunden, das wir oben korrekt zuweisen
     bar_colors = {"delta-green": "#00d488", "delta-orange": "#f0a500", "delta-red": "#ff4b4b"}
     bar_color = bar_colors.get(css, "#888")
 
@@ -119,10 +113,9 @@ def _health_index_html(index: int, label: str, css: str, today_minutes: float, l
         f'<div style="background:#333;border-radius:4px;height:6px;overflow:hidden;">'
         f'<div style="width:{index}%;height:100%;background:{bar_color};border-radius:4px;"></div>'
         f'</div>'
-        f'<div class="{css}" style="margin-top:4px;">{label} &mdash; {sub}</div>'
+        f'<div class="{css}" style="margin-top:4px;">{label} ({index}/100) &mdash; {sub}</div>'
         f'</div>'
     )
-
 
 def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None):
     st.markdown("""
