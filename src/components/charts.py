@@ -156,7 +156,7 @@ def show_main_charts(df_orig, df_long, is_team):
                 '<div class="chart-card"><div class="chart-title">📅 Monats-Heatmap</div>',
                 unsafe_allow_html=True
             )
-            show_calendar_heatmap(df_orig)
+            show_calendar_heatmap(df_orig, picked_date)
             st.markdown('</div>', unsafe_allow_html=True)
 
         with col4:
