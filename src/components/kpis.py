@@ -1,11 +1,43 @@
+"""
+KPI-Modul für das Bildschirmzeit-Dashboard.
+
+Berechnet und visualisiert vier Hauptkennzahlen:
+- Gesamtzeit der Bildschirmnutzung
+- Durchschnittliche tägliche Nutzung
+- Gesundheitsindex (0-100, basierend auf Richtwert)
+- Top-App nach Nutzungsdauer
+
+Alle KPIs werden als HTML-Boxen mit farbcodierten Vergleichswerten
+(Vortag, Gesamtschnitt) dargestellt.
+"""
+
+
 import streamlit as st
 import pandas as pd
 
-# Richtwert gesunde Bildschirmzeit pro Tag in Minuten (anpassbar)
+# Richtwert für gesunde tägliche Bildschirmzeit in Minuten.
+# Dient als Referenz für die Berechnung des Gesundheitsindex.
+# Standard: 180 Minuten (3 Stunden) - bei Bedarf anpassbar.
+
 HEALTHY_LIMIT_MINUTES = 180
 
 
 def _fmt(minutes: float) -> str:
+    """
+    Formatiert eine Minutenangabe in lesbare Zeitangabe.
+
+    Args:
+        minutes: Anzahl Minuten als Zahl (Float oder Int).
+
+    Returns:
+        String im Format "Xh Ym" bei >= 60 Minuten,
+        sonst "X min".
+
+    Beispiele:
+        >>> _fmt(45)      -> "45 min"
+        >>> _fmt(125)     -> "2h 5m"
+        >>> _fmt(60)      -> "1h 0m"
+    """
     m = int(minutes)
     if m >= 60:
         return f"{m // 60}h {m % 60}m"
@@ -13,6 +45,20 @@ def _fmt(minutes: float) -> str:
 
 
 def _delta_html(pct: float | None) -> str:
+    """
+    Erzeugt HTML-Snippet für die Anzeige einer prozentualen Veränderung.
+
+    Negative oder null Werte werden grün mit Pfeil nach unten dargestellt
+    (positive Entwicklung = weniger Bildschirmzeit), positive Werte rot
+    mit Pfeil nach oben.
+
+    Args:
+        pct: Prozentuale Änderung. None, wenn kein Vergleichswert vorhanden.
+
+    Returns:
+        HTML-String mit gefärbtem Pfeil und Prozentwert,
+        oder neutralem Hinweis bei None.
+    """
     if pct is None:
         return '<div class="delta-neutral">— kein Vergleich</div>'
     arrow = "↓" if pct <= 0 else "↑"
@@ -21,6 +67,22 @@ def _delta_html(pct: float | None) -> str:
 
 
 def _calc_yesterday_delta(df_filtered: pd.DataFrame, df_full_context: pd.DataFrame) -> float | None:
+    """
+       Berechnet die prozentuale Änderung der Bildschirmzeit gegenüber dem Vortag.
+
+       Verschiebt den Zeitraum des gefilterten DataFrames um einen Tag in die
+       Vergangenheit und vergleicht die Summen. Funktioniert auch für mehrtägige
+       Auswahlen (Vergleich Zeitraum vs. Vortag-Zeitraum).
+
+       Args:
+           df_filtered: Aktuell ausgewählter Zeitraum mit Spalten 'date', 'User',
+                        'total_minutes'.
+           df_full_context: Gesamter Datensatz für Vortagsvergleich.
+
+       Returns:
+           Prozentuale Veränderung als Float (negativ = Rückgang) oder None,
+           wenn keine Daten oder kein Vortageswert verfügbar sind.
+       """
     if df_filtered.empty or df_full_context.empty:
         return None
     min_date = df_filtered['date'].min()
@@ -41,6 +103,19 @@ def _calc_yesterday_delta(df_filtered: pd.DataFrame, df_full_context: pd.DataFra
 
 
 def _calc_avg_delta(df_filtered: pd.DataFrame, df_full_context: pd.DataFrame) -> float | None:
+    """
+        Berechnet die Abweichung des Tagesdurchschnitts vom Gesamtdurchschnitt.
+
+        Vergleicht den durchschnittlichen Tageswert im gefilterten Zeitraum
+        mit dem Durchschnitt über den gesamten Datensatz.
+
+        Args:
+            df_filtered: Gefilterter Zeitraum mit Spalten 'date', 'total_minutes'.
+            df_full_context: Gesamtdatensatz als Vergleichsbasis.
+
+        Returns:
+            Prozentuale Abweichung als Float oder None bei fehlenden Daten.
+        """
     if df_filtered.empty or df_full_context.empty:
         return None
     current_avg = df_filtered.groupby('date')['total_minutes'].sum().mean()
@@ -57,10 +132,29 @@ def _calc_health_index(
     limit: int = HEALTHY_LIMIT_MINUTES,
 ) -> tuple[int, str, str]:
     """
-    Gesundheitsindex 0–100.
-      100 = sehr gut  (weit unter Richtwert)
-      0   = sehr schlecht (massiv über Richtwert)
+    Berechnet einen Gesundheitsindex von 0-100 basierend auf Bildschirmzeit.
+
+    Der Index gewichtet zwei Faktoren:
+    - 60% aktueller Tag (today_minutes vs. Richtwert)
+    - 40% 7-Tage-Durchschnitt vor dem ausgewählten Datum
+
+    Werte über dem 3-fachen Richtwert werden gekappt, um Ausreißer zu
+    begrenzen. Ein Index von 100 bedeutet "sehr gut" (weit unter Richtwert),
+    0 bedeutet "sehr schlecht" (massiv darüber).
+
+    Args:
+        today_minutes: Gesamtminuten des ausgewählten Tages.
+        df_full_context: Gesamtdatensatz für den 7-Tage-Verlauf.
+        selected_date: Aktuell ausgewähltes Datum (pd.Timestamp-kompatibel).
+        limit: Richtwert in Minuten (Standard: HEALTHY_LIMIT_MINUTES).
+
+    Returns:
+        Tuple aus:
+        - index (int): Score 0-100
+        - label (str): "Gut", "Mäßig" oder "Schlecht"
+        - css (str): CSS-Klassenname für die Einfärbung
     """
+
     ratio_today = today_minutes / limit if limit > 0 else 0
     score_today = min(ratio_today, 3.0) / 3.0
 
@@ -95,6 +189,26 @@ def _calc_health_index(
     return index, label, css
 
 def _health_index_html(index: int, label: str, css: str, today_minutes: float, limit: int = HEALTHY_LIMIT_MINUTES) -> str:
+    """
+    Erzeugt HTML mit Fortschrittsbalken und Beschriftung für den Gesundheitsindex.
+
+    Zeigt einen farblich passenden Balken (grün/orange/rot), dessen Breite
+    dem Index entspricht, sowie eine Textzeile mit Status und Vergleich
+    zum Richtwert.
+
+    Args:
+        index: Gesundheitsindex 0-100.
+        label: Text-Label ("Gut" / "Mäßig" / "Schlecht").
+        css: CSS-Klasse für die Farbgebung.
+        today_minutes: Tatsächliche Minuten des Tages für Differenzanzeige.
+        limit: Richtwert in Minuten.
+
+    Returns:
+        HTML-String mit Fortschrittsbalken und Statustext, oder
+        Platzhalter bei fehlenden Daten.
+    """
+
+
     if today_minutes <= 0:
         return '<div class="delta-neutral">— keine Daten</div>'
 
@@ -118,6 +232,28 @@ def _health_index_html(index: int, label: str, css: str, today_minutes: float, l
     )
 
 def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None):
+    """
+      Rendert die vier KPI-Boxen im Streamlit-Dashboard.
+
+      Stellt Gesamtzeit, Tagesdurchschnitt, Gesundheitsindex und Top-App
+      in einer 4-spaltigen Anordnung dar. Alle Boxen sind dunkel gestaltet
+      und enthalten farbcodierte Vergleichswerte.
+
+      Args:
+          df_filtered: DataFrame des aktuell gefilterten Zeitraums mit
+                       Spalten 'date', 'User', 'total_minutes'.
+          df_long: Long-Format DataFrame mit App-Nutzung
+                   (Spalten 'App', 'Minutes') für die Top-App-Analyse.
+          is_team: Bool, ob es sich um eine Team-Ansicht handelt
+                   (aktuell nicht aktiv genutzt, für künftige Erweiterungen).
+          df_full_context: Gesamter Datensatz als Vergleichsbasis für
+                           Vortags- und Durchschnittsdeltas.
+          selected_date: Optional, ausgewähltes Datum für die
+                         7-Tage-Berechnung im Gesundheitsindex.
+
+      Side Effects:
+          Schreibt CSS und vier KPI-Boxen direkt in den Streamlit-Container.
+      """
     st.markdown("""
         <style>
         .kpi-box {
