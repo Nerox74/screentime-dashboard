@@ -11,9 +11,8 @@ Alle KPIs werden als HTML-Boxen mit farbcodierten Vergleichswerten
 (Vortag, Gesamtschnitt) dargestellt.
 """
 
-
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 # Richtwert für gesunde tägliche Bildschirmzeit in Minuten.
 # Dient als Referenz für die Berechnung des Gesundheitsindex.
@@ -66,60 +65,63 @@ def _delta_html(pct: float | None) -> str:
     return f'<div class="{css_class}">{arrow} {abs(pct):.0f}% vs. Vortag</div>'
 
 
-def _calc_yesterday_delta(df_filtered: pd.DataFrame, df_full_context: pd.DataFrame) -> float | None:
+def _calc_yesterday_delta(
+    df_filtered: pd.DataFrame, df_full_context: pd.DataFrame
+) -> float | None:
     """
-       Berechnet die prozentuale Änderung der Bildschirmzeit gegenüber dem Vortag.
+    Berechnet die prozentuale Änderung der Bildschirmzeit gegenüber dem Vortag.
 
-       Verschiebt den Zeitraum des gefilterten DataFrames um einen Tag in die
-       Vergangenheit und vergleicht die Summen. Funktioniert auch für mehrtägige
-       Auswahlen (Vergleich Zeitraum vs. Vortag-Zeitraum).
+    Verschiebt den Zeitraum des gefilterten DataFrames um einen Tag in die
+    Vergangenheit und vergleicht die Summen. Funktioniert auch für mehrtägige
+    Auswahlen (Vergleich Zeitraum vs. Vortag-Zeitraum).
 
-       Args:
-           df_filtered: Aktuell ausgewählter Zeitraum mit Spalten 'date', 'User',
-                        'total_minutes'.
-           df_full_context: Gesamter Datensatz für Vortagsvergleich.
+    Args:
+        df_filtered: Aktuell ausgewählter Zeitraum mit Spalten 'date', 'User',
+                     'total_minutes'.
+        df_full_context: Gesamter Datensatz für Vortagsvergleich.
 
-       Returns:
-           Prozentuale Veränderung als Float (negativ = Rückgang) oder None,
-           wenn keine Daten oder kein Vortageswert verfügbar sind.
-       """
+    Returns:
+        Prozentuale Veränderung als Float (negativ = Rückgang) oder None,
+        wenn keine Daten oder kein Vortageswert verfügbar sind.
+    """
     if df_filtered.empty or df_full_context.empty:
         return None
-    min_date = df_filtered['date'].min()
-    max_date = df_filtered['date'].max()
+    min_date = df_filtered["date"].min()
+    max_date = df_filtered["date"].max()
     prev_min = min_date - pd.Timedelta(days=1)
     prev_max = max_date - pd.Timedelta(days=1)
     prev = df_full_context[
-        (df_full_context['date'] >= prev_min) &
-        (df_full_context['date'] <= prev_max)
+        (df_full_context["date"] >= prev_min) & (df_full_context["date"] <= prev_max)
     ]
     if prev.empty:
         return None
-    current_total = df_filtered.groupby(['date', 'User'])['total_minutes'].first().sum()
-    prev_total = prev.groupby(['date', 'User'])['total_minutes'].first().sum()
+    current_total = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
+    prev_total = prev.groupby(["date", "User"])["total_minutes"].first().sum()
     if prev_total == 0:
         return None
     return ((current_total - prev_total) / prev_total) * 100
 
 
-def _calc_avg_delta(df_filtered: pd.DataFrame, df_full_context: pd.DataFrame) -> float | None:
+def _calc_avg_delta(
+    df_filtered: pd.DataFrame, df_full_context: pd.DataFrame
+) -> float | None:
     """
-        Berechnet die Abweichung des Tagesdurchschnitts vom Gesamtdurchschnitt.
+    Berechnet die Abweichung des Tagesdurchschnitts vom Gesamtdurchschnitt.
 
-        Vergleicht den durchschnittlichen Tageswert im gefilterten Zeitraum
-        mit dem Durchschnitt über den gesamten Datensatz.
+    Vergleicht den durchschnittlichen Tageswert im gefilterten Zeitraum
+    mit dem Durchschnitt über den gesamten Datensatz.
 
-        Args:
-            df_filtered: Gefilterter Zeitraum mit Spalten 'date', 'total_minutes'.
-            df_full_context: Gesamtdatensatz als Vergleichsbasis.
+    Args:
+        df_filtered: Gefilterter Zeitraum mit Spalten 'date', 'total_minutes'.
+        df_full_context: Gesamtdatensatz als Vergleichsbasis.
 
-        Returns:
-            Prozentuale Abweichung als Float oder None bei fehlenden Daten.
-        """
+    Returns:
+        Prozentuale Abweichung als Float oder None bei fehlenden Daten.
+    """
     if df_filtered.empty or df_full_context.empty:
         return None
-    current_avg = df_filtered.groupby('date')['total_minutes'].sum().mean()
-    overall_avg = df_full_context.groupby('date')['total_minutes'].sum().mean()
+    current_avg = df_filtered.groupby("date")["total_minutes"].sum().mean()
+    overall_avg = df_full_context.groupby("date")["total_minutes"].sum().mean()
     if overall_avg == 0:
         return None
     return ((current_avg - overall_avg) / overall_avg) * 100
@@ -163,13 +165,13 @@ def _calc_health_index(
         try:
             sel = pd.Timestamp(selected_date)
             week_start = sel - pd.Timedelta(days=7)
-            week_end   = sel - pd.Timedelta(days=1)
+            week_end = sel - pd.Timedelta(days=1)
             df_week = df_full_context[
-                (df_full_context['date'] >= week_start) &
-                (df_full_context['date'] <= week_end)
+                (df_full_context["date"] >= week_start)
+                & (df_full_context["date"] <= week_end)
             ]
             if not df_week.empty:
-                avg_7d = df_week.groupby('date')['total_minutes'].sum().mean()
+                avg_7d = df_week.groupby("date")["total_minutes"].sum().mean()
                 score_7d = min(avg_7d / limit, 3.0) / 3.0 if limit > 0 else 0
         except Exception:
             pass
@@ -184,11 +186,18 @@ def _calc_health_index(
     elif index >= 34:
         label, css = "Mäßig", "delta-orange"
     else:
-        label, css = "Schlecht", "delta-red" # Label angepasst von "Hoch" zu "Schlecht"
+        label, css = "Schlecht", "delta-red"  # Label angepasst von "Hoch" zu "Schlecht"
 
     return index, label, css
 
-def _health_index_html(index: int, label: str, css: str, today_minutes: float, limit: int = HEALTHY_LIMIT_MINUTES) -> str:
+
+def _health_index_html(
+    index: int,
+    label: str,
+    css: str,
+    today_minutes: float,
+    limit: int = HEALTHY_LIMIT_MINUTES,
+) -> str:
     """
     Erzeugt HTML mit Fortschrittsbalken und Beschriftung für den Gesundheitsindex.
 
@@ -208,12 +217,15 @@ def _health_index_html(index: int, label: str, css: str, today_minutes: float, l
         Platzhalter bei fehlenden Daten.
     """
 
-
     if today_minutes <= 0:
         return '<div class="delta-neutral">— keine Daten</div>'
 
     # Die Farben bleiben an das 'css' Label gebunden, das wir oben korrekt zuweisen
-    bar_colors = {"delta-green": "#00d488", "delta-orange": "#f0a500", "delta-red": "#ff4b4b"}
+    bar_colors = {
+        "delta-green": "#00d488",
+        "delta-orange": "#f0a500",
+        "delta-red": "#ff4b4b",
+    }
     bar_color = bar_colors.get(css, "#888")
 
     over = today_minutes - limit
@@ -226,35 +238,37 @@ def _health_index_html(index: int, label: str, css: str, today_minutes: float, l
         f'<div style="margin-top:6px;">'
         f'<div style="background:#333;border-radius:4px;height:6px;overflow:hidden;">'
         f'<div style="width:{index}%;height:100%;background:{bar_color};border-radius:4px;"></div>'
-        f'</div>'
+        f"</div>"
         f'<div class="{css}" style="margin-top:4px;">{label} ({index}/100) &mdash; {sub}</div>'
-        f'</div>'
+        f"</div>"
     )
+
 
 def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None):
     """
-      Rendert die vier KPI-Boxen im Streamlit-Dashboard.
+    Rendert die vier KPI-Boxen im Streamlit-Dashboard.
 
-      Stellt Gesamtzeit, Tagesdurchschnitt, Gesundheitsindex und Top-App
-      in einer 4-spaltigen Anordnung dar. Alle Boxen sind dunkel gestaltet
-      und enthalten farbcodierte Vergleichswerte.
+    Stellt Gesamtzeit, Tagesdurchschnitt, Gesundheitsindex und Top-App
+    in einer 4-spaltigen Anordnung dar. Alle Boxen sind dunkel gestaltet
+    und enthalten farbcodierte Vergleichswerte.
 
-      Args:
-          df_filtered: DataFrame des aktuell gefilterten Zeitraums mit
-                       Spalten 'date', 'User', 'total_minutes'.
-          df_long: Long-Format DataFrame mit App-Nutzung
-                   (Spalten 'App', 'Minutes') für die Top-App-Analyse.
-          is_team: Bool, ob es sich um eine Team-Ansicht handelt
-                   (aktuell nicht aktiv genutzt, für künftige Erweiterungen).
-          df_full_context: Gesamter Datensatz als Vergleichsbasis für
-                           Vortags- und Durchschnittsdeltas.
-          selected_date: Optional, ausgewähltes Datum für die
-                         7-Tage-Berechnung im Gesundheitsindex.
+    Args:
+        df_filtered: DataFrame des aktuell gefilterten Zeitraums mit
+                     Spalten 'date', 'User', 'total_minutes'.
+        df_long: Long-Format DataFrame mit App-Nutzung
+                 (Spalten 'App', 'Minutes') für die Top-App-Analyse.
+        is_team: Bool, ob es sich um eine Team-Ansicht handelt
+                 (aktuell nicht aktiv genutzt, für künftige Erweiterungen).
+        df_full_context: Gesamter Datensatz als Vergleichsbasis für
+                         Vortags- und Durchschnittsdeltas.
+        selected_date: Optional, ausgewähltes Datum für die
+                       7-Tage-Berechnung im Gesundheitsindex.
 
-      Side Effects:
-          Schreibt CSS und vier KPI-Boxen direkt in den Streamlit-Container.
-      """
-    st.markdown("""
+    Side Effects:
+        Schreibt CSS und vier KPI-Boxen direkt in den Streamlit-Container.
+    """
+    st.markdown(
+        """
         <style>
         .kpi-box {
             background-color: #1e1e1e;
@@ -274,11 +288,17 @@ def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None
         .delta-red    { color: #ff4b4b; font-size: 0.85rem; }
         .delta-neutral{ color: #666;    font-size: 0.85rem; }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     # ── Berechnungen ─────────────────────────────────────────────
-    total_m = df_filtered.groupby(['date', 'User'])['total_minutes'].first().sum()
-    avg = df_filtered.groupby('date')['total_minutes'].sum().mean() if not df_filtered.empty else 0
+    total_m = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
+    avg = (
+        df_filtered.groupby("date")["total_minutes"].sum().mean()
+        if not df_filtered.empty
+        else 0
+    )
 
     yesterday_pct = _calc_yesterday_delta(df_filtered, df_full_context)
     avg_pct = _calc_avg_delta(df_filtered, df_full_context)
@@ -288,7 +308,7 @@ def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None
 
     # Top App
     if not df_long.empty:
-        top_series = df_long.groupby('App')['Minutes'].sum()
+        top_series = df_long.groupby("App")["Minutes"].sum()
         top_app = top_series.idxmax()
         top_app_min = int(top_series.max())
         top_app_sub = f"{_fmt(top_app_min)} erfasst"
@@ -300,17 +320,30 @@ def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None
     c1, c2, c3, c4 = st.columns(4)
 
     with c1:
-        st.markdown(f"""<div class="kpi-box"><div class="kpi-title">Gesamtzeit</div><div class="kpi-main">{_fmt(total_m)}</div>{_delta_html(yesterday_pct)}</div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""<div class="kpi-box"><div class="kpi-title">Gesamtzeit</div><div class="kpi-main">{_fmt(total_m)}</div>{_delta_html(yesterday_pct)}</div>""",
+            unsafe_allow_html=True,
+        )
 
     with c2:
         avg_delta_html = (
             f'<div class="{"delta-green" if avg_pct <= 0 else "delta-red"}">{"↓" if avg_pct <= 0 else "↑"} {abs(avg_pct):.0f}% vs. Gesamtschnitt</div>'
-            if avg_pct is not None else '<div class="delta-neutral">— kein Vergleich</div>'
+            if avg_pct is not None
+            else '<div class="delta-neutral">— kein Vergleich</div>'
         )
-        st.markdown(f"""<div class="kpi-box"><div class="kpi-title">Ø Täglich</div><div class="kpi-main">{_fmt(avg)}</div>{avg_delta_html}</div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""<div class="kpi-box"><div class="kpi-title">Ø Täglich</div><div class="kpi-main">{_fmt(avg)}</div>{avg_delta_html}</div>""",
+            unsafe_allow_html=True,
+        )
 
     with c3:
-        st.markdown(f"""<div class="kpi-box"><div class="kpi-title">Gesundheitsindex</div><div class="kpi-main">{index} / 100</div>{_health_index_html(index, label, css, total_m)}</div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""<div class="kpi-box"><div class="kpi-title">Gesundheitsindex</div><div class="kpi-main">{index} / 100</div>{_health_index_html(index, label, css, total_m)}</div>""",
+            unsafe_allow_html=True,
+        )
 
     with c4:
-        st.markdown(f"""<div class="kpi-box"><div class="kpi-title">Top App</div><div class="kpi-main" style="font-size:1.2rem;">{top_app}</div><div class="{top_css}">{top_app_sub}</div></div>""", unsafe_allow_html=True)
+        st.markdown(
+            f"""<div class="kpi-box"><div class="kpi-title">Top App</div><div class="kpi-main" style="font-size:1.2rem;">{top_app}</div><div class="{top_css}">{top_app_sub}</div></div>""",
+            unsafe_allow_html=True,
+        )

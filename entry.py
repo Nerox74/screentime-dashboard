@@ -4,39 +4,81 @@ ihre tägliche Bildschirmzeit sowie die Nutzungsdauer ihrer Top-5-Apps erfassen 
 Die Daten werden als CSV-Dateien in einem angebundenen GitHub-Repository gespeichert.
 """
 
-import streamlit as st
-import pandas as pd
 import base64
 import io
+import logging
 from datetime import date, timedelta
+
+import pandas as pd
+import streamlit as st
 from github import Github, GithubException
+
+from logging_setup import setup_logging
 
 # ── Konfiguration ────────────────────────────────────────────────
 # Liste der verfügbaren Personen für das Dropdown-Menü
 PERSONS = ["Henning", "Michell", "Nils"]
 
 # Liste bekannter Apps zur Autovervollständigung und Normalisierung
-KNOWN_APPS = sorted([
-    "Amazon", "Apple Music", "BeReal", "Chrome", "Clash of Clans",
-    "Discord", "Disney+", "Duolingo", "Facebook", "Gmail",
-    "Google Maps", "HBO Max", "Instagram", "LinkedIn", "Maps",
-    "Netflix", "Pinterest", "Reddit", "Safari", "Shazam",
-    "Signal", "Snapchat", "Spotify", "Telegram", "TikTok",
-    "Tinder", "Twitch", "Twitter", "WhatsApp", "YouTube"
-])
+KNOWN_APPS = sorted(
+    [
+        "Amazon",
+        "Apple Music",
+        "BeReal",
+        "Chrome",
+        "Clash of Clans",
+        "Discord",
+        "Disney+",
+        "Duolingo",
+        "Facebook",
+        "Gmail",
+        "Google Maps",
+        "HBO Max",
+        "Instagram",
+        "LinkedIn",
+        "Maps",
+        "Netflix",
+        "Pinterest",
+        "Reddit",
+        "Safari",
+        "Shazam",
+        "Signal",
+        "Snapchat",
+        "Spotify",
+        "Telegram",
+        "TikTok",
+        "Tinder",
+        "Twitch",
+        "Twitter",
+        "WhatsApp",
+        "YouTube",
+    ]
+)
 
 # Definiertes Schema für die CSV-Dateien
 CSV_COLUMNS = [
-    "date", "person", "total_minutes",
-    "app1_name", "app1_minutes",
-    "app2_name", "app2_minutes",
-    "app3_name", "app3_minutes",
-    "app4_name", "app4_minutes",
-    "app5_name", "app5_minutes"
+    "date",
+    "person",
+    "total_minutes",
+    "app1_name",
+    "app1_minutes",
+    "app2_name",
+    "app2_minutes",
+    "app3_name",
+    "app3_minutes",
+    "app4_name",
+    "app4_minutes",
+    "app5_name",
+    "app5_minutes",
 ]
 
+# ── Setup des Loggers ─────────────────────────────────────────────
 
+setup_logging("projekt.log")
+logger = logging.getLogger(__name__)
+logging.info("Die App wurde gestartet")
 # ── GitHub-Verbindung ─────────────────────────────────────────────
+
 
 def get_repo():
     """
@@ -59,8 +101,8 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         person (str): Der Name der Person, deren Daten geladen werden sollen.
 
     Returns:
-        pd.DataFrame: Ein DataFrame mit den historischen Einträgen der Person. 
-                      Gibt einen leeren DataFrame mit den definierten Spalten zurück, 
+        pd.DataFrame: Ein DataFrame mit den historischen Einträgen der Person.
+                      Gibt einen leeren DataFrame mit den definierten Spalten zurück,
                       falls die Datei nicht existiert oder ein Fehler auftritt.
     """
     repo = get_repo()
@@ -71,20 +113,24 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         # GitHub liefert den Dateiinhalt base64-kodiert zurück, daher muss er dekodiert werden
         content = base64.b64decode(file.content).decode("utf-8")
         df = pd.read_csv(io.StringIO(content))
-        
+
         # Datum in ein einheitliches Datetime-Format umwandeln und die Uhrzeit abschneiden (normalize)
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
 
         # Alte Spaltennamen (Tippfehler ohne "s") zur Abwärtskompatibilität korrigieren
-        df = df.rename(columns={
-            "app4_minute": "app4_minutes",
-            "app5_minute": "app5_minutes",
-        })
+        df = df.rename(
+            columns={
+                "app4_minute": "app4_minutes",
+                "app5_minute": "app5_minutes",
+            }
+        )
 
         # Fehlende App4/App5-Spalten ergänzen (falls es alte Einträge mit nur 3 Apps gibt)
         for col, default in [
-            ("app4_name", ""), ("app4_minutes", 0),
-            ("app5_name", ""), ("app5_minutes", 0),
+            ("app4_name", ""),
+            ("app4_minutes", 0),
+            ("app5_name", ""),
+            ("app5_minutes", 0),
         ]:
             if col not in df.columns:
                 df[col] = default
@@ -137,6 +183,7 @@ def save_csv_to_github(person: str, df: pd.DataFrame) -> None:
 
 # ── Hilfsfunktionen ──────────────────────────────────────────────
 
+
 def normalize_app_name(name: str) -> str:
     """
     Normalisiert einen eingegebenen App-Namen, indem Leerzeichen entfernt werden
@@ -151,12 +198,12 @@ def normalize_app_name(name: str) -> str:
     name = name.strip()
     if not name:
         return name
-    
+
     # Prüfen, ob die App (unabhängig von Groß-/Kleinschreibung) in der Liste bekannt ist
     for known in KNOWN_APPS:
         if name.lower() == known.lower():
             return known
-            
+
     # Falls unbekannt, zumindest den ersten Buchstaben groß schreiben
     return name[0].upper() + name[1:] if name else name
 
@@ -207,7 +254,9 @@ def validate_entry(
             errors.append(f"App {i}: Minuten dürfen nicht negativ sein.")
         # Eine einzelne App darf nicht mehr Zeit in Anspruch nehmen als die Gesamtzeit
         if total_minutes > 0 and app_min > total_minutes:
-            errors.append(f"App {i} ({app_min} min) übersteigt die Gesamtzeit ({total_minutes} min).")
+            errors.append(
+                f"App {i} ({app_min} min) übersteigt die Gesamtzeit ({total_minutes} min)."
+            )
 
     # Prüfen, ob die Summe der Top 5 die Gesamtzeit überschreitet
     app_sum = sum(m for _, m in apps)
@@ -269,11 +318,11 @@ def append_entry(
         "app5_minutes": apps[4][1],
     }
     new_row_df = pd.DataFrame([new_row])
-    
+
     # Falls das bestehende DataFrame noch leer war, wird einfach die neue Zeile zurückgegeben
     if existing_df.empty:
         return new_row_df
-        
+
     return pd.concat([existing_df, new_row_df], ignore_index=True)
 
 
@@ -313,8 +362,7 @@ with st.spinner("Daten werden geladen..."):
 
 # Prüfen, ob für heute bereits ein Eintrag vorliegt, um den User darauf hinzuweisen
 already_today = (
-    not existing_df.empty
-    and (existing_df["date"].dt.date == date.today()).any()
+    not existing_df.empty and (existing_df["date"].dt.date == date.today()).any()
 )
 if already_today:
     st.info("Du hast heute bereits eingetragen — scrolle nach unten zum Korrigieren.")
@@ -383,7 +431,9 @@ for i in range(1, 6):
     with col_name:
         # Dropdown mit bekannten Apps plus Optionen für Freitext
         options = ["— App wählen —"] + KNOWN_APPS + ["Andere App..."]
-        choice = st.selectbox(f"App {i} Name", options, key=f"sel_{i}", label_visibility="collapsed")
+        choice = st.selectbox(
+            f"App {i} Name", options, key=f"sel_{i}", label_visibility="collapsed"
+        )
 
         # Wenn "Andere App..." gewählt wird, erscheint ein Freitextfeld
         if choice == "Andere App...":
@@ -406,10 +456,14 @@ for i in range(1, 6):
     # Eingabefelder für die Zeit der jeweiligen App
     with col_min_h:
         st.caption("Std.")
-        app_h = st.number_input("h", 0, 23, 0, key=f"app{i}_h", label_visibility="collapsed")
+        app_h = st.number_input(
+            "h", 0, 23, 0, key=f"app{i}_h", label_visibility="collapsed"
+        )
     with col_min_m:
         st.caption("Min.")
-        app_m = st.number_input("m", 0, 59, 0, key=f"app{i}_m", label_visibility="collapsed")
+        app_m = st.number_input(
+            "m", 0, 59, 0, key=f"app{i}_m", label_visibility="collapsed"
+        )
 
     app_minutes = app_h * 60 + app_m
     apps.append((app_name, app_minutes))
@@ -417,7 +471,7 @@ for i in range(1, 6):
     if app_minutes > 0:
         st.caption(f"= {app_minutes} Minuten")
 
-# Anzeige eines Fortschrittsbalkens, der visualisiert, 
+# Anzeige eines Fortschrittsbalkens, der visualisiert,
 # wie viel der Gesamtzeit durch die Top 5 Apps erklärt wird
 if total_minutes > 0:
     app_sum = sum(m for _, m in apps)
@@ -445,7 +499,9 @@ if st.button("Eintrag speichern", type="primary", use_container_width=True):
     else:
         # Bei Erfolg DataFrame aktualisieren und zu GitHub pushen
         with st.spinner("Wird in GitHub gespeichert..."):
-            updated_df = append_entry(existing_df, person, entry_date, total_minutes, apps)
+            updated_df = append_entry(
+                existing_df, person, entry_date, total_minutes, apps
+            )
             save_csv_to_github(person, updated_df)
 
         # Erfolgsmeldung und visuelles Feedback (Ballons)
@@ -476,23 +532,37 @@ with st.expander(f"Einträge von {person} ansehen & korrigieren"):
         display = fresh_df.sort_values("date", ascending=False).copy()
         display["date"] = display["date"].dt.strftime("%d.%m.%Y")
         display["gesamt"] = display["total_minutes"].apply(fmt_minutes)
-        display = display[[
-            "date", "gesamt",
-            "app1_name", "app1_minutes",
-            "app2_name", "app2_minutes",
-            "app3_name", "app3_minutes",
-            "app4_name", "app4_minutes",
-            "app5_name", "app5_minutes"
-        ]]
-        
+        display = display[
+            [
+                "date",
+                "gesamt",
+                "app1_name",
+                "app1_minutes",
+                "app2_name",
+                "app2_minutes",
+                "app3_name",
+                "app3_minutes",
+                "app4_name",
+                "app4_minutes",
+                "app5_name",
+                "app5_minutes",
+            ]
+        ]
+
         # Benutzerfreundliche Spaltennamen vergeben
         display.columns = [
-            "Datum", "Gesamt",
-            "App 1", "Min 1",
-            "App 2", "Min 2",
-            "App 3", "Min 3",
-            "App 4", "Min 4",
-            "App 5", "Min 5"
+            "Datum",
+            "Gesamt",
+            "App 1",
+            "Min 1",
+            "App 2",
+            "Min 2",
+            "App 3",
+            "Min 3",
+            "App 4",
+            "Min 4",
+            "App 5",
+            "Min 5",
         ]
         # Die Tabelle in Streamlit anzeigen
         st.dataframe(display, use_container_width=True, hide_index=True)
@@ -509,12 +579,14 @@ with st.expander(f"Einträge von {person} ansehen & korrigieren"):
                 format_func=lambda d: d.strftime("%d.%m.%Y"),
                 key="del_date",
             )
-            
+
             # Löschen auslösen, wenn der Button geklickt wird
             if st.button("Eintrag löschen", type="secondary", key="del_btn"):
                 with st.spinner("Wird gelöscht..."):
                     # Alle Einträge filtern, die NICHT das zu löschende Datum haben
-                    updated = fresh_df[fresh_df["date"].dt.date != date_to_delete].copy()
+                    updated = fresh_df[
+                        fresh_df["date"].dt.date != date_to_delete
+                    ].copy()
                     # Das aktualisierte (reduzierte) DataFrame auf GitHub speichern
                     save_csv_to_github(person, updated)
                 st.success(

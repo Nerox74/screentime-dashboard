@@ -16,6 +16,7 @@ from datetime import timedelta
 
 import pandas as pd
 import streamlit as st
+
 from components.charts import show_main_charts
 from components.header import show_header
 from components.kpis import show_kpis
@@ -114,6 +115,6 @@ if not df_orig.empty:
     # Übergabe der Daten und des Kontexts für die Deltas
     show_kpis(df_orig, df_long, is_team, df_full_context)
     st.write("")
-    show_main_charts(df_orig, df_long, is_team,picked_date, selected_option)
+    show_main_charts(df_orig, df_long, is_team, picked_date, selected_option)
 else:
     st.info(f"Keine Daten für {selected_option} im gewählten Zeitraum gefunden.")
