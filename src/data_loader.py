@@ -25,6 +25,8 @@ def load_user_data(user_name):
         "Nils": "nils.csv",
     }
 
+    logger.info("Lade Daten für User '%s'", user_name)
+
     # Dynamische Pfadermittlung: Navigiert vom aktuellen Skript-Ordner zum Projekt-Root
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(current_dir)
