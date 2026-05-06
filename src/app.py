@@ -32,14 +32,6 @@ st.set_page_config(layout="wide", page_title="Screentime Dashboard")
 logger = logging.getLogger(__name__)
 
 
-"""
- SCHRITT 1: DATEN FÜR DEN KALENDER VORAB LADEN ---
- Der Header benötigt die verfügbaren Datumswerte, bevor der Nutzer eine
- Auswahl trifft. Da zu diesem Zeitpunkt noch nicht feststeht, welche Person
- ausgewählt wird, nutzen wir Michell als Referenzdatensatz.
- Annahme: Alle Nutzer haben überlappende Zeiträume - falls nicht, müsste
- hier ggf. die Vereinigung aller Datumswerte gebildet werden.
-"""
 _, df_temp = load_user_data("Michell")
 available_dates = df_temp["date"] if not df_temp.empty else pd.Series()
 
@@ -50,6 +42,8 @@ available_dates = df_temp["date"] if not df_temp.empty else pd.Series()
    - time_filter:     "Tag" | "Woche" | "Monat"
    - selected_option: Personenname oder "Alle" für Team-Ansicht
    - picked_date:     Referenzdatum für den Zeitfilter"""
+
+
 time_filter, selected_option, picked_date = show_header(available_dates)
 st.markdown("---")
 
@@ -111,6 +105,7 @@ if not df_orig.empty and picked_date:
     SCHRITT 5: ANZEIGE
     Nur rendern, wenn nach dem Filter noch Daten vorhanden sind.
     Andernfalls Hinweis statt leerer Charts/KPIs."""
+
 if not df_orig.empty:
     # Übergabe der Daten und des Kontexts für die Deltas
     show_kpis(df_orig, df_long, is_team, df_full_context)
