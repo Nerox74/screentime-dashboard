@@ -1,7 +1,9 @@
+import logging
 import pandas as pd
 import os
 import streamlit as st
 
+logger = logging.getLogger(__name__)
 
 def load_user_data(user_name):
     """
@@ -19,6 +21,7 @@ def load_user_data(user_name):
         "Henning": "henning.csv",
         "Nils": "nils.csv"
     }
+    logger.info("Lade Daten für User '%s'", user_name)
 
     # Dynamische Pfadermittlung: Navigiert vom aktuellen Skript-Ordner zum Projekt-Root
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,9 +30,11 @@ def load_user_data(user_name):
 
     # Überprüfung, ob die Datei existiert, um Laufzeitfehler zu vermeiden
     if not os.path.exists(file_path):
+        logger.warning("CSV-Datei nicht gefunden: %s", file_path)
         return pd.DataFrame(), pd.DataFrame()
 
     # Laden der CSV-Datei mit automatischer Trennzeichen-Erkennung
+
     data = pd.read_csv(file_path, sep=None, engine='python')
 
     # Bereinigung der Spaltennamen (Entfernt Leerzeichen) und Vereinheitlichung
