@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 # hier ggf. die Vereinigung aller Datumswerte gebildet werden.
 
 
-_, df_temp = load_user_data("Michell")
+_, df_temp = load_user_data("Nils")
 available_dates = df_temp["date"] if not df_temp.empty else pd.Series()
 
 
