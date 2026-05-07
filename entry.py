@@ -77,6 +77,7 @@ CSV_COLUMNS = [
 setup_logging("projekt.log")
 logger = logging.getLogger(__name__)
 logging.info("Die App wurde gestartet")
+
 # ── GitHub-Verbindung ─────────────────────────────────────────────
 
 
@@ -117,7 +118,6 @@ def load_csv_from_github(person: str) -> pd.DataFrame:
         # Datum in ein einheitliches Datetime-Format umwandeln und die Uhrzeit abschneiden (normalize)
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
 
-        # Alte Spaltennamen (Tippfehler ohne "s") zur Abwärtskompatibilität korrigieren
         df = df.rename(
             columns={
                 "app4_minute": "app4_minutes",

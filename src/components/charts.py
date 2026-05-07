@@ -125,7 +125,6 @@ def show_main_charts(
         show_team_view(df_orig)
         return
 
-
     from components.fazit import show_fazit
 
     # Gemeinsame Farb-Map für beide Charts
