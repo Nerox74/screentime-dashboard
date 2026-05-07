@@ -123,11 +123,15 @@ def show_main_charts(
 
     if is_team:
         show_team_view(df_orig)
+        return
+
+
+    from components.fazit import show_fazit
 
     # Gemeinsame Farb-Map für beide Charts
     color_map = get_app_color_map(df_long)
 
-    # ── Reihe 1: Top Apps + Torte ── (für ALLE Ansichten)
+    # ── Reihe 1: Top Apps + Torte ──
     col1, col2 = st.columns([1.6, 1])
 
     with col1:
@@ -193,8 +197,7 @@ def show_main_charts(
                 color_discrete_map=color_map,
             )
             fig_pie.update_traces(
-                textinfo="none",
-                marker=dict(line=dict(color="#1e1e1e", width=2)),
+                textinfo="none", marker=dict(line=dict(color="#1e1e1e", width=2))
             )
             style_plotly_layout(fig_pie)
             fig_pie.update_layout(
@@ -219,7 +222,7 @@ def show_main_charts(
             )
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── Reihe 2: Kalender-Heatmap + Fazit ── (für ALLE Ansichten)
+    # ── Reihe 2: Kalender-Heatmap + Fazit ──
     col3, col4 = st.columns([1, 2])
 
     with col3:
@@ -231,9 +234,7 @@ def show_main_charts(
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col4:
-        from components.fazit import show_fazit
-
-        show_fazit(df_orig, df_long, is_team=is_team, selected_user=selected_user)
+        show_fazit(df_orig, df_long, is_team=False, selected_user=selected_user)
 
 
 def show_calendar_heatmap(df_orig, picked_date=None):
@@ -248,14 +249,12 @@ def show_calendar_heatmap(df_orig, picked_date=None):
 
     today = pd.Timestamp.now().date()
 
-    # Monat aus picked_date ableiten (statt immer der aktuelle Monat)
     if picked_date is not None:
         ref = pd.Timestamp(picked_date).date()
     else:
         ref = today
     year, month = ref.year, ref.month
 
-    # Daten für den gewählten Monat aggregieren
     actual_data: dict = {}
     if not df_orig.empty:
         monthly = df_orig[
