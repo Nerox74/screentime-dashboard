@@ -61,10 +61,13 @@ if selected_option == "Alle":
     all_l, all_o = [], []
     # Wichtig: Die Namen müssen exakt wie im file_mapping in data_loader.py sein
     for name in ["Michell", "Henning", "Nils"]:
-        l, o = load_user_data(name)
-        if not l.empty:
-            all_l.append(l)
-            all_o.append(o)
+        try:
+            l, o = load_user_data(name)
+            if not l.empty:
+                all_l.append(l)
+                all_o.append(o)
+        except(OSError, ValueError, KeyError) as exc:
+            logger.warning(f"Daten für {name} konnten nicht geladen werden: {exc}")
 
     if all_l:
         df_long = pd.concat(all_l, ignore_index=True)
@@ -88,26 +91,29 @@ df_full_context = df_orig.copy() if not df_orig.empty else pd.DataFrame()
 #    monat/-woche, sondern die letzten 7 bzw. 30 Tage.
 
 if not df_orig.empty and picked_date:
-    picked_date = pd.to_datetime(picked_date)
-    if time_filter == "Tag":
-        df_orig = df_orig[df_orig["date"] == picked_date]
-        df_long = df_long[df_long["date"] == picked_date]
-    elif time_filter == "Woche":
-        start_date = picked_date - timedelta(days=7)
-        df_orig = df_orig[
-            (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
-        ]
-        df_long = df_long[
-            (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
-        ]
-    elif time_filter == "Monat":
-        start_date = picked_date - timedelta(days=30)
-        df_orig = df_orig[
-            (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
-        ]
-        df_long = df_long[
-            (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
-        ]
+    try:
+        picked_date = pd.to_datetime(picked_date)
+        if time_filter == "Tag":
+            df_orig = df_orig[df_orig["date"] == picked_date]
+            df_long = df_long[df_long["date"] == picked_date]
+        elif time_filter == "Woche":
+            start_date = picked_date - timedelta(days=7)
+            df_orig = df_orig[
+                (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
+            ]
+            df_long = df_long[
+                (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
+            ]
+        elif time_filter == "Monat":
+            start_date = picked_date - timedelta(days=30)
+            df_orig = df_orig[
+                (df_orig["date"] > start_date) & (df_orig["date"] <= picked_date)
+            ]
+            df_long = df_long[
+                (df_long["date"] > start_date) & (df_long["date"] <= picked_date)
+            ]
+    except (ValueError, TypeError, KeyError) as exc:
+        logger.error(f"Der Zeitfilter konnte nicht angewendet werden: {exc}")
 
 
 #    SCHRITT 5: ANZEIGE

@@ -11,6 +11,7 @@ Alle KPIs werden als HTML-Boxen mit farbcodierten Vergleichswerten
 (Vortag, Gesamtschnitt) dargestellt.
 """
 
+import logging
 import pandas as pd
 import streamlit as st
 
@@ -19,6 +20,8 @@ import streamlit as st
 # Standard: 180 Minuten (3 Stunden) - bei Bedarf anpassbar.
 
 HEALTHY_LIMIT_MINUTES = 180
+
+logger = logging.getLogger(__name__)
 
 
 def _fmt(minutes: float) -> str:
@@ -86,20 +89,24 @@ def _calc_yesterday_delta(
     """
     if df_filtered.empty or df_full_context.empty:
         return None
-    min_date = df_filtered["date"].min()
-    max_date = df_filtered["date"].max()
-    prev_min = min_date - pd.Timedelta(days=1)
-    prev_max = max_date - pd.Timedelta(days=1)
-    prev = df_full_context[
-        (df_full_context["date"] >= prev_min) & (df_full_context["date"] <= prev_max)
-    ]
-    if prev.empty:
+    try:
+        min_date = df_filtered["date"].min()
+        max_date = df_filtered["date"].max()
+        prev_min = min_date - pd.Timedelta(days=1)
+        prev_max = max_date - pd.Timedelta(days=1)
+        prev = df_full_context[
+            (df_full_context["date"] >= prev_min) & (df_full_context["date"] <= prev_max)
+        ]
+        if prev.empty:
+            return None
+        current_total = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
+        prev_total = prev.groupby(["date", "User"])["total_minutes"].first().sum()
+        if prev_total == 0:
+            return None
+        return ((current_total - prev_total) / prev_total) * 100
+    except(KeyError, ValueError) as exc:
+        logger.warning("Vortags-Delta konnte nicht berechnet werden: %s", exc)
         return None
-    current_total = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
-    prev_total = prev.groupby(["date", "User"])["total_minutes"].first().sum()
-    if prev_total == 0:
-        return None
-    return ((current_total - prev_total) / prev_total) * 100
 
 
 def _calc_avg_delta(
@@ -120,11 +127,15 @@ def _calc_avg_delta(
     """
     if df_filtered.empty or df_full_context.empty:
         return None
-    current_avg = df_filtered.groupby("date")["total_minutes"].sum().mean()
-    overall_avg = df_full_context.groupby("date")["total_minutes"].sum().mean()
-    if overall_avg == 0:
+    try:
+        current_avg = df_filtered.groupby("date")["total_minutes"].sum().mean()
+        overall_avg = df_full_context.groupby("date")["total_minutes"].sum().mean()
+        if overall_avg == 0:
+            return None
+        return ((current_avg - overall_avg) / overall_avg) * 100
+    except(KeyError, ValueError) as exc:
+        logger.warning("Durchschnitts-Delta konnte nicht berechnet werden: %s", exc)
         return None
-    return ((current_avg - overall_avg) / overall_avg) * 100
 
 
 def _calc_health_index(
@@ -173,10 +184,11 @@ def _calc_health_index(
             if not df_week.empty:
                 avg_7d = df_week.groupby("date")["total_minutes"].sum().mean()
                 score_7d = min(avg_7d / limit, 3.0) / 3.0 if limit > 0 else 0
-        except Exception:
-            pass
+        except (KeyError, ValueError, TypeError) as exc:
+            logger.warning("7-Tage-Score konnte nicht berechnet werden: %s", exc)
+            score_7d = 0.0
 
-    # Umkehrung: 100 - Belastung
+                # Umkehrung: 100 - Belastung
     # Wenn score_today & score_7d = 0 sind (keine Nutzung), ergibt das 100 (Perfekt)
     index = round(100 - ((score_today * 0.6 + score_7d * 0.4) * 100))
 
@@ -293,12 +305,17 @@ def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None
     )
 
     # ── Berechnungen ─────────────────────────────────────────────
-    total_m = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
-    avg = (
-        df_filtered.groupby("date")["total_minutes"].sum().mean()
-        if not df_filtered.empty
-        else 0
-    )
+    try:
+        total_m = df_filtered.groupby(["date", "User"])["total_minutes"].first().sum()
+        avg = (
+            df_filtered.groupby("date")["total_minutes"].sum().mean()
+            if not df_filtered.empty
+            else 0
+        )
+    except (KeyError, ValueError) as exc:
+        logger.error("KPI-Aggregation fehlgeschlagen: %s", exc, exc_info=True)
+        st.error("KPIs konnten nicht berechnet werden.")
+        return
 
     yesterday_pct = _calc_yesterday_delta(df_filtered, df_full_context)
     avg_pct = _calc_avg_delta(df_filtered, df_full_context)
@@ -308,11 +325,16 @@ def show_kpis(df_filtered, df_long, is_team, df_full_context, selected_date=None
 
     # Top App
     if not df_long.empty:
-        top_series = df_long.groupby("App")["Minutes"].sum()
-        top_app = top_series.idxmax()
-        top_app_min = int(top_series.max())
-        top_app_sub = f"{_fmt(top_app_min)} erfasst"
-        top_css = "delta-green"
+        try:
+            top_series = df_long.groupby("App")["Minutes"].sum()
+            top_app = top_series.idxmax()
+            top_app_min = int(top_series.max())
+            top_app_sub = f"{_fmt(top_app_min)} erfasst"
+            top_css = "delta-green"
+
+        except (KeyError, ValueError) as exc:
+            logger.warning("Top-App-Berechnung fehlgeschlagen: %s", exc)
+            top_app, top_app_sub, top_css = "—", "Fehler bei Berechnung", "delta-neutral"
     else:
         top_app, top_app_sub, top_css = "—", "keine Daten", "delta-neutral"
 
