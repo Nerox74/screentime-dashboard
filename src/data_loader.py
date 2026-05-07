@@ -1,9 +1,11 @@
 import logging
-import pandas as pd
 import os
+
+import pandas as pd
 import streamlit as st
 
 logger = logging.getLogger(__name__)
+
 
 def load_user_data(user_name):
     """
@@ -19,7 +21,7 @@ def load_user_data(user_name):
     file_mapping = {
         "Michell": "michell.csv",
         "Henning": "henning.csv",
-        "Nils": "nils.csv"
+        "Nils": "nils.csv",
     }
 
     logger.info("Lade Daten für User '%s'", user_name)
@@ -36,7 +38,7 @@ def load_user_data(user_name):
 
     # Laden der CSV-Datei mit automatischer Trennzeichen-Erkennung
     try:
-        data = pd.read_csv(file_path, sep=None, engine='python')
+        data = pd.read_csv(file_path, sep=None, engine="python")
 
     except OSError:
         logger.warning(f"Datei für {user_name} konnte nicht gelesen werden.")
@@ -52,33 +54,34 @@ def load_user_data(user_name):
 
     # Bereinigung der Spaltennamen (Entfernt Leerzeichen) und Vereinheitlichung
     data.columns = data.columns.str.strip()
-    if 'person' in data.columns:
-        data = data.rename(columns={'person': 'User'})
+    if "person" in data.columns:
+        data = data.rename(columns={"person": "User"})
 
     # Konvertierung des Datumsspalte in echte Python-Datetime-Objekte
     try:
-        data['date'] = pd.to_datetime(data['date'])
+        data["date"] = pd.to_datetime(data["date"])
     except (ValueError, TypeError):
         logger.error(f"Datumsformat in {user_name}.csv konnte nicht gelesen werden.")
         return pd.DataFrame(), pd.DataFrame()
-
 
     # Transformation: Umwandlung vom Breit-Format (app1, app2...) in das Lang-Format (Tidying)
     rows = []
     for _, r in data.iterrows():
         for i in range(1, 6):
-            app_n = r.get(f'app{i}_name')
-            app_m = r.get(f'app{i}_minutes')
+            app_n = r.get(f"app{i}_name")
+            app_m = r.get(f"app{i}_minutes")
 
             # Nur hinzufügen, wenn ein App-Name hinterlegt ist (Validierung)
             if pd.notna(app_n):
-                rows.append({
-                    'date': r['date'],
-                    'User': user_name,
-                    'total_minutes': r['total_minutes'],
-                    'App': app_n,
-                    'Minutes': app_m
-                })
+                rows.append(
+                    {
+                        "date": r["date"],
+                        "User": user_name,
+                        "total_minutes": r["total_minutes"],
+                        "App": app_n,
+                        "Minutes": app_m,
+                    }
+                )
 
     # Rückgabe des transformierten Detail-DataFrames und der bereinigten Rohdaten
     return pd.DataFrame(rows), data

@@ -15,8 +15,6 @@ from github import Github, GithubException
 
 from logging_setup import setup_logging
 
-from logging_setup import setup_logging
-
 # ── Konfiguration ────────────────────────────────────────────────
 # Liste der verfügbaren Personen für das Dropdown-Menü
 PERSONS = ["Henning", "Michell", "Nils"]
