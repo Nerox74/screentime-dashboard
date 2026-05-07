@@ -21,6 +21,7 @@ def load_user_data(user_name):
         "Henning": "henning.csv",
         "Nils": "nils.csv"
     }
+
     logger.info("Lade Daten für User '%s'", user_name)
 
     # Dynamische Pfadermittlung: Navigiert vom aktuellen Skript-Ordner zum Projekt-Root
@@ -34,8 +35,20 @@ def load_user_data(user_name):
         return pd.DataFrame(), pd.DataFrame()
 
     # Laden der CSV-Datei mit automatischer Trennzeichen-Erkennung
+    try:
+        data = pd.read_csv(file_path, sep=None, engine='python')
 
-    data = pd.read_csv(file_path, sep=None, engine='python')
+    except OSError:
+        logger.warning(f"Datei für {user_name} konnte nicht gelesen werden.")
+        return pd.DataFrame(), pd.DataFrame()
+
+    except pd.errors.ParserError:
+        logger.error(f"Datei für {user_name} ist beschädigt (CSV-Format ungültig).")
+        return pd.DataFrame(), pd.DataFrame()
+
+    except UnicodeDecodeError:
+        logger.error(f"Datei für {user_name} hat ein unbekanntes Encoding.")
+        return pd.DataFrame(), pd.DataFrame()
 
     # Bereinigung der Spaltennamen (Entfernt Leerzeichen) und Vereinheitlichung
     data.columns = data.columns.str.strip()
@@ -43,7 +56,12 @@ def load_user_data(user_name):
         data = data.rename(columns={'person': 'User'})
 
     # Konvertierung des Datumsspalte in echte Python-Datetime-Objekte
-    data['date'] = pd.to_datetime(data['date'])
+    try:
+        data['date'] = pd.to_datetime(data['date'])
+    except (ValueError, TypeError):
+        logger.error(f"Datumsformat in {user_name}.csv konnte nicht gelesen werden.")
+        return pd.DataFrame(), pd.DataFrame()
+
 
     # Transformation: Umwandlung vom Breit-Format (app1, app2...) in das Lang-Format (Tidying)
     rows = []
