@@ -1,3 +1,12 @@
+"""
+Stellt das Header-Modul für das Streamlit-Dashboard bereit.
+
+Dieses Modul enthält die UI-Komponenten für den Kopfbereich der Anwendung.
+Es kümmert sich um das Layout, das Styling (CSS) und die Bereitstellung
+wichtiger globaler Filter wie Zeitraum, Datum und Benutzerauswahl.
+"""
+
+
 import logging
 
 import pandas as pd
@@ -8,7 +17,28 @@ logger = logging.getLogger(__name__)
 
 
 def show_header(available_dates):
-    # CSS für das kompakte Design
+    """
+        Rendert den Header-Bereich des Dashboards und erfasst die globalen Filterkriterien.
+
+        Diese Funktion erzeugt ein kompaktes, vierspaltiges Layout innerhalb der Streamlit-App:
+        - Spalte 1: Der Dashboard-Titel.
+        - Spalte 2: Ein Radio-Button-Filter für den Zeitraum ("Tag", "Woche", "Monat").
+        - Spalte 3: Ein Date-Picker zur Datumsauswahl, dessen wählbarer Bereich durch
+          `available_dates` begrenzt wird.
+        - Spalte 4: Ein Profil-Bereich mit Dropdown-Menü zur Benutzerauswahl.
+
+        Args:
+            available_dates (pd.Series oder pd.DatetimeIndex): Eine Sammlung von
+                Datumsangaben, aus der das minimale und maximale wählbare Datum für
+                den Kalender bestimmt wird. Ist diese Liste leer, wird standardmäßig
+                das heutige Datum verwendet.
+
+        Returns:
+            tuple: Ein Tupel mit den drei ausgewählten Filterwerten:
+                - time_filter (str): Der ausgewählte Zeitraum ("Tag", "Woche" oder "Monat").
+                - selected_user (str): Der gewählte Benutzername (z. B. "Michell", "Alle").
+                - selected_date (pd.Timestamp): Das im Kalender ausgewählte Datum.
+        """
     st.markdown(
         """
         <style>

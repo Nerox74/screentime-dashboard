@@ -1,3 +1,12 @@
+"""
+Stellt die textbasierte Zusammenfassung (das "Fazit") für das Dashboard bereit.
+
+Dieses Modul berechnet verschiedene Statistiken aus den Nutzerdaten
+(z. B. bester/schlechtester Tag, Durchschnitt, Top-Apps) und bereitet diese
+in einer lesbaren, HTML-formatierten Kartenansicht auf. Unterstützt wird
+sowohl die Analyse für einen einzelnen Nutzer als auch ein Team-Vergleich.
+"""
+
 import pandas as pd
 import streamlit as st
 
@@ -14,7 +23,16 @@ WEEKDAYS_DE = [
 
 
 def _fmt_minutes(minutes: float) -> str:
-    """Formatiert Minuten als 'Xh Ym' oder 'Y min'."""
+    """
+    Formatiert eine Minutenanzahl in einen gut lesbaren String ('Xh Ym' oder 'Y min').
+
+    Args:
+        minutes (float): Die Anzahl der Minuten.
+
+    Returns:
+        str: Der formatierte Zeit-String. Gibt "—" zurück, wenn der Wert NaN/None ist.
+    """
+
     if pd.isna(minutes) or minutes is None:
         return "—"
     m = int(round(minutes))
@@ -28,14 +46,32 @@ def _fmt_minutes(minutes: float) -> str:
 
 
 def _fmt_date(d) -> str:
-    """Formatiert ein Datum im deutschen Format (z. B. '30.03.2026')."""
+    """
+       Formatiert ein Datum oder Timestamp in das deutsche Format (z. B. '30.03.2026').
+
+       Args:
+           d (pd.Timestamp, str oder None): Das zu formatierende Datum.
+
+       Returns:
+           str: Das Datum im Format 'DD.MM.YYYY'. Gibt "—" zurück, wenn ungültig.
+       """
+
     if d is None or pd.isna(d):
         return "—"
     return pd.Timestamp(d).strftime("%d.%m.%Y")
 
 
 def _fmt_weekday(d) -> str:
-    """Gibt den deutschen Wochentag zurück."""
+    """
+        Ermittelt den deutschen Wochentagsnamen für ein gegebenes Datum.
+
+        Args:
+            d (pd.Timestamp, str oder None): Das auszuwertende Datum.
+
+        Returns:
+            str: Der Name des Wochentags (z. B. "Montag"). Gibt einen leeren
+                 String zurück, wenn der Wert ungültig ist.
+        """
     if d is None or pd.isna(d):
         return ""
     return WEEKDAYS_DE[pd.Timestamp(d).weekday()]
@@ -131,6 +167,18 @@ def show_fazit(df_orig, df_long, is_team, selected_user="Michell"):
 # EINZELANSICHT: Fazit für eine Person
 # ──────────────────────────────────────────────────────────────
 def _render_user_fazit(df_orig, df_long, user_name):
+    """
+        Berechnet und rendert die textuellen Zusammenfassungen für einen Einzelnutzer.
+
+        Beinhaltet Kennzahlen wie die Gesamtzeit, bester/schlechtester Tag,
+        den täglichen Durchschnitt, die Top-App und die Disziplin hinsichtlich
+        eines Richtwerts von 3 Stunden.
+
+        Args:
+            df_orig (pd.DataFrame): Aggregierte Tages-Daten gefiltert auf den Nutzer.
+            df_long (pd.DataFrame): App-spezifische Daten gefiltert auf den Nutzer.
+            user_name (str): Name des Nutzers.
+        """
     items = []
 
     # Pro-Tag-Aggregation (falls mehrere Einträge pro Tag existieren, nimm den ersten)
@@ -264,6 +312,16 @@ def _render_user_fazit(df_orig, df_long, user_name):
 # TEAM-ANSICHT: Fazit für 'Alle'
 # ──────────────────────────────────────────────────────────────
 def _render_team_fazit(df_orig, df_long):
+    """
+        Berechnet und rendert die textuellen Zusammenfassungen für das gesamte Team.
+
+        Vergleicht Nutzer untereinander und liefert Insights, wer am wenigsten/meisten
+        am Handy war, wer den besten Tagesschnitt hat und welches die Top-App im Team ist.
+
+        Args:
+            df_orig (pd.DataFrame): Die kompletten tagesbezogenen Daten aller Nutzer.
+            df_long (pd.DataFrame): Die kompletten App-Daten aller Nutzer.
+        """
     items = []
 
     if "User" not in df_orig.columns:
@@ -404,6 +462,16 @@ def _render_team_fazit(df_orig, df_long):
 # Hilfsfunktion: Items rendern
 # ──────────────────────────────────────────────────────────────
 def _render_items(items):
+    """
+        Rendert eine Liste von Fazit-Einträgen als HTML-Blöcke über Streamlit.
+
+        Args:
+            items (list): Eine Liste aus Tupeln, jeweils bestehend aus:
+                - icon (str): Das Emoji-Icon.
+                - text (str): Der anzuzeigende (HTML-formatierte) Text.
+                - _tone (str oder None): Die Stimmung/Farbe des Eintrags (ungenutzt im HTML-Ausgabeblock,
+                  wird im Text über CSS-Klassen wie 'fazit-warn' gesteuert).
+        """
     for icon, text, _tone in items:
         st.markdown(
             f'<div class="fazit-item">'

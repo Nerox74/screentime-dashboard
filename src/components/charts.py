@@ -1,3 +1,12 @@
+"""
+Stellt die visuellen Diagramm-Komponenten für das Streamlit-Dashboard bereit.
+
+Dieses Modul kümmert sich um die Erstellung und Darstellung von interaktiven
+Plotly-Diagrammen (Balken- und Kreisdiagramme) sowie einer benutzerdefinierten
+HTML/CSS-basierten Kalender-Heatmap. Es unterstützt sowohl die Einzelansicht
+für spezifische Nutzer als auch eine aggregierte Team-Ansicht.
+"""
+
 import calendar
 
 import pandas as pd
