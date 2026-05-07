@@ -123,120 +123,118 @@ def show_main_charts(
 
     if is_team:
         show_team_view(df_orig)
-        from components.fazit import show_fazit
+        return
 
-        show_fazit(df_orig, df_long, is_team=True)
-        # Gemeinsame Farb-Map für beide Charts
-        color_map = get_app_color_map(df_long)
 
-        # ── Reihe 1: Top Apps + Torte ──
-        col1, col2 = st.columns([1.6, 1])
+    from components.fazit import show_fazit
 
-        with col1:
+    # Gemeinsame Farb-Map für beide Charts
+    color_map = get_app_color_map(df_long)
+
+    # ── Reihe 1: Top Apps + Torte ──
+    col1, col2 = st.columns([1.6, 1])
+
+    with col1:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">📊 Top Apps heute</div>',
+            unsafe_allow_html=True,
+        )
+        if not df_long.empty:
+            top_apps = (
+                df_long.groupby("App")["Minutes"]
+                .sum()
+                .sort_values(ascending=True)
+                .tail(5)
+            )
+            icon_map = {
+                "Instagram": "📸",
+                "WhatsApp": "💬",
+                "TikTok": "🎵",
+                "YouTube": "📺",
+                "Safari": "🌐",
+                "Netflix": "🎬",
+            }
+            labels = [f"{icon_map.get(app, '📱')} {app}" for app in top_apps.index]
+            bar_colors = [color_map.get(app, "#00d488") for app in top_apps.index]
+
+            fig = px.bar(
+                y=labels, x=top_apps.values, orientation="h", text=top_apps.values
+            )
+            fig.update_traces(
+                marker_color=bar_colors,
+                textposition="outside",
+                cliponaxis=False,
+                texttemplate="%{x} min",
+            )
+            style_plotly_layout(fig)
+            fig.update_layout(
+                margin=dict(l=10, r=60, t=10, b=10),
+                uniformtext_minsize=8,
+                uniformtext_mode="hide",
+            )
+            st.plotly_chart(
+                fig, use_container_width=True, config={"displayModeBar": False}
+            )
+        else:
             st.markdown(
-                '<div class="chart-card"><div class="chart-title">📊 Top Apps heute</div>',
+                '<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
                 unsafe_allow_html=True,
             )
-            if not df_long.empty:
-                top_apps = (
-                    df_long.groupby("App")["Minutes"]
-                    .sum()
-                    .sort_values(ascending=True)
-                    .tail(5)
-                )
-                icon_map = {
-                    "Instagram": "📸",
-                    "WhatsApp": "💬",
-                    "TikTok": "🎵",
-                    "YouTube": "📺",
-                    "Safari": "🌐",
-                    "Netflix": "🎬",
-                }
-                labels = [f"{icon_map.get(app, '📱')} {app}" for app in top_apps.index]
-                # Farben aus der gemeinsamen Map ziehen
-                bar_colors = [color_map.get(app, "#00d488") for app in top_apps.index]
+        st.markdown("</div>", unsafe_allow_html=True)
 
-                fig = px.bar(
-                    y=labels, x=top_apps.values, orientation="h", text=top_apps.values
-                )
-                fig.update_traces(
-                    marker_color=bar_colors,
-                    textposition="outside",
-                    cliponaxis=False,
-                    texttemplate="%{x} min",
-                )
-                style_plotly_layout(fig)
-                fig.update_layout(
-                    margin=dict(l=10, r=60, t=10, b=10),
-                    uniformtext_minsize=8,
-                    uniformtext_mode="hide",
-                )
-                st.plotly_chart(
-                    fig, use_container_width=True, config={"displayModeBar": False}
-                )
-            else:
-                st.markdown(
-                    '<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
-                    unsafe_allow_html=True,
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with col2:
+    with col2:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">🥧 Verteilung</div>',
+            unsafe_allow_html=True,
+        )
+        if not df_long.empty:
+            fig_pie = px.pie(
+                df_long,
+                values="Minutes",
+                names="App",
+                hole=0.5,
+                color="App",
+                color_discrete_map=color_map,
+            )
+            fig_pie.update_traces(
+                textinfo="none", marker=dict(line=dict(color="#1e1e1e", width=2))
+            )
+            style_plotly_layout(fig_pie)
+            fig_pie.update_layout(
+                showlegend=True,
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=-0.45,
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(size=11),
+                ),
+                margin=dict(l=10, r=10, t=10, b=60),
+            )
+            st.plotly_chart(
+                fig_pie, use_container_width=True, config={"displayModeBar": False}
+            )
+        else:
             st.markdown(
-                '<div class="chart-card"><div class="chart-title">🥧 Verteilung</div>',
+                '<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
                 unsafe_allow_html=True,
             )
-            if not df_long.empty:
-                # color_discrete_map sorgt für identische Farben wie im Balken
-                fig_pie = px.pie(
-                    df_long,
-                    values="Minutes",
-                    names="App",
-                    hole=0.5,
-                    color="App",
-                    color_discrete_map=color_map,
-                )
-                fig_pie.update_traces(
-                    textinfo="none", marker=dict(line=dict(color="#1e1e1e", width=2))
-                )
-                style_plotly_layout(fig_pie)
-                fig_pie.update_layout(
-                    showlegend=True,
-                    legend=dict(
-                        orientation="h",
-                        yanchor="bottom",
-                        y=-0.45,
-                        xanchor="center",
-                        x=0.5,
-                        font=dict(size=11),
-                    ),
-                    margin=dict(l=10, r=10, t=10, b=60),
-                )
-                st.plotly_chart(
-                    fig_pie, use_container_width=True, config={"displayModeBar": False}
-                )
-            else:
-                st.markdown(
-                    '<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
-                    unsafe_allow_html=True,
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Reihe 2: Kalender-Heatmap + Fazit ──
-        col3, col4 = st.columns([1, 2])
+    # ── Reihe 2: Kalender-Heatmap + Fazit ──
+    col3, col4 = st.columns([1, 2])
 
-        with col3:
-            st.markdown(
-                '<div class="chart-card"><div class="chart-title">📅 Monats-Heatmap</div>',
-                unsafe_allow_html=True,
-            )
-            show_calendar_heatmap(df_orig, picked_date)
-            st.markdown("</div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(
+            '<div class="chart-card"><div class="chart-title">📅 Monats-Heatmap</div>',
+            unsafe_allow_html=True,
+        )
+        show_calendar_heatmap(df_orig, picked_date)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        with col4:
-            from components.fazit import show_fazit
-
-            show_fazit(df_orig, df_long, is_team=False, selected_user=selected_user)
+    with col4:
+        show_fazit(df_orig, df_long, is_team=False, selected_user=selected_user)
 
 
 def show_calendar_heatmap(df_orig, picked_date=None):
@@ -251,14 +249,12 @@ def show_calendar_heatmap(df_orig, picked_date=None):
 
     today = pd.Timestamp.now().date()
 
-    # Monat aus picked_date ableiten (statt immer der aktuelle Monat)
     if picked_date is not None:
         ref = pd.Timestamp(picked_date).date()
     else:
         ref = today
     year, month = ref.year, ref.month
 
-    # Daten für den gewählten Monat aggregieren
     actual_data: dict = {}
     if not df_orig.empty:
         monthly = df_orig[
