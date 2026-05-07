@@ -1,3 +1,4 @@
+import logging
 import pandas as pd
 import streamlit as st
 
@@ -12,6 +13,7 @@ WEEKDAYS_DE = [
     "Sonntag",
 ]
 
+logger = logging.getLogger(__name__)
 
 def _fmt_minutes(minutes: float) -> str:
     """Formatiert Minuten als 'Xh Ym' oder 'Y min'."""
@@ -118,11 +120,18 @@ def show_fazit(df_orig, df_long, is_team, selected_user="Michell"):
         )
         st.markdown("</div>", unsafe_allow_html=True)
         return
+    try:
+        if is_team:
+            _render_team_fazit(df_orig, df_long)
+        else:
+            _render_user_fazit(df_orig, df_long, selected_user)
 
-    if is_team:
-        _render_team_fazit(df_orig, df_long)
-    else:
-        _render_user_fazit(df_orig, df_long, selected_user)
+    except (KeyError, ValueError, TypeError) as exc:
+        logger.error("Fazit-Rendering fehlgeschlagen (team=%s): %s", is_team, exc, exc_info=True)
+        st.markdown(
+            '<div class="fazit-empty">Fazit konnte nicht erstellt werden.</div>',
+            unsafe_allow_html=True,
+        )
 
     st.markdown("</div>", unsafe_allow_html=True)
 

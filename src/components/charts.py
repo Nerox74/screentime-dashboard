@@ -1,10 +1,12 @@
 import calendar
 
+import logging
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────
 # Zentrale Farb-Map für Apps (wird in Balken UND Torte genutzt)
@@ -122,7 +124,12 @@ def show_main_charts(
     )
 
     if is_team:
-        show_team_view(df_orig)
+        try:
+            show_team_view(df_orig)
+
+        except (KeyError, ValueError) as exc:
+            logger.error("Team-View-Rendering fehlgeschlagen: %s", exc, exc_info=True)
+            st.warning("Team-Vergleich konnte nicht angezeigt werden.")
 
     # Gemeinsame Farb-Map für beide Charts
     color_map = get_app_color_map(df_long)
@@ -133,74 +140,105 @@ def show_main_charts(
     with col1:
         st.markdown('<div class="chart-card"><div class="chart-title">📊 Top Apps heute</div>',
                     unsafe_allow_html=True)
-        if not df_long.empty:
-            top_apps = (df_long.groupby("App")["Minutes"].sum()
-                        .sort_values(ascending=True).tail(5))
-            icon_map = {
-                "Instagram": "📸", "WhatsApp": "💬", "TikTok": "🎵",
-                "YouTube": "📺", "Safari": "🌐", "Netflix": "🎬",
-            }
-            labels = [f"{icon_map.get(app, '📱')} {app}" for app in top_apps.index]
-            bar_colors = [color_map.get(app, "#00d488") for app in top_apps.index]
+        try:
+            if not df_long.empty:
+                top_apps = (df_long.groupby("App")["Minutes"].sum()
+                            .sort_values(ascending=True).tail(5))
+                icon_map = {
+                    "Instagram": "📸", "WhatsApp": "💬", "TikTok": "🎵",
+                    "YouTube": "📺", "Safari": "🌐", "Netflix": "🎬",
+                }
+                labels = [f"{icon_map.get(app, '📱')} {app}" for app in top_apps.index]
+                bar_colors = [color_map.get(app, "#00d488") for app in top_apps.index]
 
-            fig = px.bar(y=labels, x=top_apps.values, orientation="h", text=top_apps.values)
-            fig.update_traces(
-                marker_color=bar_colors,
-                textposition="outside",
-                cliponaxis=False,
-                texttemplate="%{x} min",
-            )
-            style_plotly_layout(fig)
-            fig.update_layout(
-                margin=dict(l=10, r=60, t=10, b=10),
-                uniformtext_minsize=8,
-                uniformtext_mode="hide",
-            )
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.markdown('<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
+                fig = px.bar(y=labels, x=top_apps.values, orientation="h", text=top_apps.values)
+                fig.update_traces(
+                    marker_color=bar_colors,
+                    textposition="outside",
+                    cliponaxis=False,
+                    texttemplate="%{x} min",
+                )
+                style_plotly_layout(fig)
+                fig.update_layout(
+                    margin=dict(l=10, r=60, t=10, b=10),
+                    uniformtext_minsize=8,
+                    uniformtext_mode="hide",
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown('<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
                         unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        except (KeyError, ValueError) as exc:
+            logger.error("Balkendiagramm fehlgeschlagen: %s", exc, exc_info=True)
+            st.warning("Top-Apps-Chart konnte nicht gerendert werden.")
+            # Platzhalter, damit das Layout nicht kaputt aussieht
+            st.markdown(
+                '<p style="color:#555; text-align:center; margin-top:40px;">Chart-Fehler</p>',
+                unsafe_allow_html=True,
+            )
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col2:
         st.markdown('<div class="chart-card"><div class="chart-title">🥧 Verteilung</div>',
                     unsafe_allow_html=True)
-        if not df_long.empty:
-            fig_pie = px.pie(
-                df_long, values="Minutes", names="App", hole=0.5,
-                color="App", color_discrete_map=color_map,
-            )
-            fig_pie.update_traces(
-                textinfo="none",
-                marker=dict(line=dict(color="#1e1e1e", width=2)),
-            )
-            style_plotly_layout(fig_pie)
-            fig_pie.update_layout(
-                showlegend=True,
-                legend=dict(
-                    orientation="h", yanchor="bottom", y=-0.45,
-                    xanchor="center", x=0.5, font=dict(size=11),
-                ),
-                margin=dict(l=10, r=10, t=10, b=60),
-            )
-            st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
-        else:
-            st.markdown('<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
-                        unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        try:
+            if not df_long.empty:
+                fig_pie = px.pie(
+                    df_long, values="Minutes", names="App", hole=0.5,
+                    color="App", color_discrete_map=color_map,
+                )
+                fig_pie.update_traces(
+                    textinfo="none",
+                    marker=dict(line=dict(color="#1e1e1e", width=2)),
+                )
+                style_plotly_layout(fig_pie)
+                fig_pie.update_layout(
+                    showlegend=True,
+                    legend=dict(
+                        orientation="h", yanchor="bottom", y=-0.45,
+                        xanchor="center", x=0.5, font=dict(size=11),
+                    ),
+                    margin=dict(l=10, r=10, t=10, b=60),
+                )
+                st.plotly_chart(fig_pie, use_container_width=True, config={"displayModeBar": False})
+            else:
+                st.markdown('<p style="color:#555; text-align:center; margin-top:40px;">Keine Daten</p>',
+                            unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
+
+        except (KeyError, ValueError) as exc:
+
+            logger.error("Kreisdiagramm fehlgeschlagen: %s", exc, exc_info=True)
+            st.warning("Verteilungs-Chart konnte nicht gerendert werden.")
+            st.markdown(
+                '<p style="color:#555; text-align:center; margin-top:40px;">Chart-Fehler</p>',
+                unsafe_allow_html=True,
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
     # ── Reihe 2: Kalender-Heatmap + Fazit ── (für ALLE Ansichten)
     col3, col4 = st.columns([1, 2])
 
     with col3:
         st.markdown('<div class="chart-card"><div class="chart-title">📅 Monats-Heatmap</div>',
                     unsafe_allow_html=True)
-        show_calendar_heatmap(df_orig, picked_date)
+        try:
+            show_calendar_heatmap(df_orig, picked_date)
+        except (KeyError, ValueError, TypeError) as exc:
+            logger.error("Heatmap fehlgeschlagen: %s", exc, exc_info=True)
+            st.warning("Heatmap konnte nicht gerendert werden.")
         st.markdown("</div>", unsafe_allow_html=True)
 
     with col4:
         from components.fazit import show_fazit
-        show_fazit(df_orig, df_long, is_team=is_team, selected_user=selected_user)
+        try:
+            show_fazit(df_orig, df_long, is_team=is_team, selected_user=selected_user)
+
+        except (KeyError, ValueError, TypeError) as exc:
+            logger.error("Team-Fazit fehlgeschlagen: %s", exc, exc_info=True)
+            st.warning("Team-Fazit konnte nicht erstellt werden.")
 
 
 def show_calendar_heatmap(df_orig, picked_date=None):
@@ -319,16 +357,20 @@ def show_team_view(df_orig):
         '<div class="chart-title">👥 Team Vergleich (Schnitt)</div>',
         unsafe_allow_html=True,
     )
-    if not df_orig.empty:
-        team_avg = df_orig.groupby("User")["total_minutes"].mean().reset_index()
-        fig = px.bar(
-            team_avg,
-            x="User",
-            y="total_minutes",
-            color="User",
-            color_discrete_sequence=px.colors.qualitative.Pastel,
-        )
-        style_plotly_layout(fig)
-        fig.update_layout(showlegend=False)
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    try:
+        if not df_orig.empty:
+            team_avg = df_orig.groupby("User")["total_minutes"].mean().reset_index()
+            fig = px.bar(
+                team_avg,
+                x="User",
+                y="total_minutes",
+                color="User",
+                color_discrete_sequence=px.colors.qualitative.Pastel,
+            )
+            style_plotly_layout(fig)
+            fig.update_layout(showlegend=False)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    except (KeyError, ValueError) as exc:
+        logger.error("Team-Vergleich fehlgeschlagen: %s", exc, exc_info=True)
+        st.warning("Team-Vergleich konnte nicht gerendert werden.")
     st.markdown("</div>", unsafe_allow_html=True)
